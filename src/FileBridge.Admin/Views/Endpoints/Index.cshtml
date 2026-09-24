@@ -1,0 +1,23 @@
+@model List<Endpoint>
+@{ ViewData["Title"] = "Endpoints"; }
+<h1>Endpoints</h1>
+<p><a class="btn-fb" asp-action="Create">Add endpoint</a></p>
+<table class="fb-table">
+    <thead><tr><th>Name</th><th>Type</th><th>Host / Base path</th><th>Enabled</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var e in Model)
+    {
+        <tr>
+            <td>@e.Name</td>
+            <td>@e.EndpointTypeId</td>
+            <td class="fb-mono">@(e.Host ?? e.BaseUrl) @e.BasePath</td>
+            <td><span class="fb-badge @(e.IsEnabled ? "ok" : "muted")">@(e.IsEnabled ? "Enabled" : "Disabled")</span></td>
+            <td>
+                <button class="btn-fb secondary" data-fb-action="post-poll" data-fb-url="/Endpoints/TestConnection/@e.Id" data-fb-result="test-@e.Id">Test</button>
+                <a class="fb-textlink ms-2" asp-action="Edit" asp-route-id="@e.Id">Edit</a>
+                <div id="test-@e.Id" class="mt-2"></div>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

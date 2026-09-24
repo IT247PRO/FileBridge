@@ -1,0 +1,19 @@
+@model ChangeRequest
+@{ ViewData["Title"] = "Review change"; var current = ViewBag.Current as string; }
+<header class="page-head">
+    <h1>Change to @Model.EntityName @(Model.EntityKey is null ? "(new)" : $"#{Model.EntityKey}")</h1>
+    <p class="muted">Requested by @Model.RequestedBy on @Ui.Local(Model.RequestedUtc).</p>
+</header>
+<div class="grid-2">
+    <section><h2 class="h6">Current settings</h2><pre class="json">@(current ?? "This creates a new job.")</pre></section>
+    <section><h2 class="h6">Proposed settings</h2><pre class="json">@Model.PayloadJson</pre></section>
+</div>
+@if (Model.ApprovalStatusId == ApprovalStatus.Pending)
+{
+    <form method="post" class="form-foot">
+        <input type="hidden" name="id" value="@Model.Id" />
+        <input name="comment" class="form-control" placeholder="Comment (optional)" aria-label="Comment" />
+        <button class="btn btn-primary" asp-action="Approve">Approve and apply</button>
+        <button class="btn btn-outline-danger" asp-action="Reject">Reject</button>
+    </form>
+}

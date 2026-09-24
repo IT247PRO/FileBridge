@@ -1,0 +1,57 @@
+@model EndpointEditModel
+@{ ViewData["Title"] = Model.Id == 0 ? "Add endpoint" : "Edit endpoint"; }
+<h1>@ViewData["Title"]</h1>
+<form method="post" asp-action="Save" class="fb-form">
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="RowVersion" />
+    <div class="row">
+        <div><label>Name</label><input asp-for="Name" /></div>
+        <div><label>Type</label>
+            <select asp-for="EndpointTypeId" asp-items="Html.GetEnumSelectList<EndpointType>()"></select>
+        </div>
+    </div>
+    <div class="row">
+        <div><label>Host (SFTP)</label><input asp-for="Host" placeholder="sftp.partner.example.com" /></div>
+        <div><label>Port</label><input asp-for="Port" type="number" /></div>
+    </div>
+    <div><label>Base path</label><input asp-for="BasePath" placeholder="\\server\share\folder or /outbound" /></div>
+    <div><label>SFTP host key fingerprint (SHA256)</label><input asp-for="HostKeyFingerprint" class="fb-mono" /></div>
+
+    <fieldset><legend>HTTPS (REST)</legend>
+        <div><label>Base URL</label><input asp-for="BaseUrl" /></div>
+        <div class="row">
+            <div><label>List route</label><input asp-for="ListRoute" /></div>
+            <div><label>Download route</label><input asp-for="DownloadRoute" /></div>
+        </div>
+        <div class="row">
+            <div><label>Upload route</label><input asp-for="UploadRoute" /></div>
+            <div><label>Delete route</label><input asp-for="DeleteRoute" /></div>
+        </div>
+        <div><label>Rename route</label><input asp-for="RenameRoute" /></div>
+    </fieldset>
+
+    <fieldset><legend>Credential @(Model.HasStoredCredential ? "(a credential is stored; leave fields blank to keep it)" : "")</legend>
+        <div class="row">
+            <div><label>Domain</label><input asp-for="Domain" /></div>
+            <div><label>Username</label><input asp-for="Username" /></div>
+        </div>
+        <div class="row">
+            <div><label>Password</label><input asp-for="Password" type="password" autocomplete="new-password" /></div>
+            <div><label>Private key (PEM, SFTP)</label><textarea asp-for="PrivateKey" rows="4" class="fb-mono"></textarea></div>
+        </div>
+        <div><label>Private key passphrase</label><input asp-for="Passphrase" type="password" autocomplete="new-password" /></div>
+    </fieldset>
+
+    <div><label>Timeout (seconds)</label><input asp-for="TimeoutSeconds" type="number" /></div>
+    <div class="checkline"><input asp-for="IsEnabled" type="checkbox" /><label asp-for="IsEnabled">Enabled</label></div>
+    <div><label>Notes</label><textarea asp-for="Notes" rows="2"></textarea></div>
+
+    <div class="mt-3">
+        <button type="submit" class="btn-fb">Save</button>
+        <a class="fb-textlink" asp-action="Index">Cancel</a>
+        @if (Model.Id != 0)
+        {
+            <button type="button" class="btn-fb secondary ms-3" data-fb-explore="@Model.Id" data-fb-title="Browse @Model.Name">Browse</button>
+        }
+    </div>
+</form>

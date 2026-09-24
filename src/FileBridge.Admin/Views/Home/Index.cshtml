@@ -1,0 +1,59 @@
+@model DashboardViewModel
+@{ ViewData["Title"] = "Dashboard"; }
+<h1>Dashboard</h1>
+
+<div class="fb-grid">
+    <div class="fb-stat"><div class="n">@Model.SucceededToday</div><div class="l">Succeeded today</div></div>
+    <div class="fb-stat"><div class="n">@Model.FailedToday</div><div class="l">Failed today</div></div>
+    <div class="fb-stat"><div class="n">@Model.InProgress</div><div class="l">In progress</div></div>
+    <div class="fb-stat"><div class="n">@(Model.BytesToday / 1024 / 1024) MB</div><div class="l">Delivered today</div></div>
+    <div class="fb-stat"><div class="n">@Model.HeldQuarantine</div><div class="l">Held in quarantine</div></div>
+    <div class="fb-stat"><div class="n">@Model.PendingApprovals</div><div class="l">Pending approvals</div></div>
+</div>
+
+<div class="fb-card">
+    <h2>Kill switch</h2>
+    <p>When on, the Worker skips every scheduled and manual run cluster-wide. Use only for an emergency stop.</p>
+    <form method="post" asp-action="ToggleKillSwitch">
+        <button type="submit" class="btn-fb @(Model.KillSwitchOn ? "danger" : "secondary")">
+            @(Model.KillSwitchOn ? "Turn kill switch off" : "Turn kill switch on")
+        </button>
+        @if (Model.KillSwitchOn) { <span class="fb-badge fail ms-2">Kill switch is ON</span> }
+    </form>
+</div>
+
+<div class="fb-card">
+    <h2>Cluster nodes</h2>
+    @if (Model.Nodes.Count == 0) { <div class="fb-empty">No heartbeats yet.</div> }
+    else
+    {
+        <table class="fb-table">
+            <thead><tr><th>Node</th><th>Role</th><th>Last seen (UTC)</th><th>Status</th></tr></thead>
+            <tbody>
+            @foreach (var n in Model.Nodes)
+            {
+                var stale = (DateTime.UtcNow - n.LastSeenUtc).TotalMinutes > 2;
+                <tr><td>@n.NodeName</td><td>@n.NodeRole</td><td>@n.LastSeenUtc.ToString("u")</td>
+                    <td><span class="fb-badge @(stale ? "warn" : "ok")">@(stale ? "Stale" : "Healthy")</span></td></tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+<div class="fb-card">
+    <h2>Jobs with failures today</h2>
+    @if (Model.RecentFailingJobs.Count == 0) { <div class="fb-empty">No failures today.</div> }
+    else
+    {
+        <table class="fb-table">
+            <thead><tr><th>Job</th><th>Failures</th><th>Last failure (UTC)</th></tr></thead>
+            <tbody>
+            @foreach (var j in Model.RecentFailingJobs)
+            {
+                <tr><td>@j.JobName</td><td><span class="fb-badge fail">@j.Failed</span></td><td>@j.LastRunUtc.ToString("u")</td></tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>

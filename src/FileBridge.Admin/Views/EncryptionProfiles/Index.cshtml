@@ -1,0 +1,20 @@
+@model List<EncryptionProfile>
+@{ ViewData["Title"] = "Encryption profiles"; }
+<h1>Encryption profiles</h1>
+@if (TempData["GeneratedAesKey"] is string key)
+{
+    <div class="fb-card card-warn">
+        <strong>New AES key generated — copy it now, it will not be shown again:</strong>
+        <div class="fb-mono break-all mt-2">@key</div>
+    </div>
+}
+<p><a class="btn-fb" asp-action="Create">Add profile</a></p>
+<table class="fb-table">
+    <thead><tr><th>Name</th><th>Operation</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var p in Model)
+    {
+        <tr><td>@p.Name</td><td>@p.EncryptionOperationId</td><td><a class="fb-textlink" asp-action="Edit" asp-route-id="@p.Id">Edit</a></td></tr>
+    }
+    </tbody>
+</table>

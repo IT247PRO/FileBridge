@@ -1,0 +1,39 @@
+@model List<Job>
+@{ ViewData["Title"] = "Jobs"; }
+<h1>Jobs</h1>
+<p><a class="btn-fb" asp-action="Create">Add job</a>
+<form method="post" asp-action="Import" enctype="multipart/form-data" class="d-inline-block ms-2">
+    <input type="file" name="file" accept=".json" /> <button type="submit" class="btn-fb secondary">Import</button>
+</form></p>
+<table class="fb-table">
+    <thead><tr><th>Job</th><th>Route</th><th>Schedule</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var j in Model)
+    {
+        <tr>
+            <td>@j.Name</td>
+            <td>
+                <div class="fb-lane">
+                    <span class="ep">@j.SourceEndpoint?.Name</span>
+                    <span class="track"></span>
+                    <span class="ep">@j.DestinationEndpoint?.Name</span>
+                </div>
+            </td>
+            <td class="fb-mono text-xs">@(j.ScheduleTypeId == ScheduleType.Cron ? j.CronExpression : $"every {j.IntervalSeconds}s")</td>
+            <td>
+                @if (!j.IsEnabled) { <span class="fb-badge muted">Disabled</span> }
+                else if (j.IsPaused) { <span class="fb-badge warn">Paused</span> }
+                else { <span class="fb-badge ok">Active</span> }
+            </td>
+            <td>
+                <button class="btn-fb secondary" data-fb-action="post-poll" data-fb-url="/Jobs/DryRun/@j.Id" data-fb-result="dr-@j.Id">Dry run</button>
+                <button class="btn-fb secondary" data-fb-action="post-poll" data-fb-url="/Jobs/RunNow/@j.Id" data-fb-result="dr-@j.Id">Run now</button>
+                <form method="post" asp-action="TogglePause" asp-route-id="@j.Id" class="d-inline"><button type="submit" class="btn-fb secondary">@(j.IsPaused ? "Resume" : "Pause")</button></form>
+                <a class="fb-textlink" asp-action="Edit" asp-route-id="@j.Id">Edit</a>
+                <a class="fb-textlink" asp-action="Versions" asp-route-id="@j.Id">History</a>
+                <div id="dr-@j.Id" class="mt-2"></div>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

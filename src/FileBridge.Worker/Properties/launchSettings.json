@@ -1,0 +1,5 @@
+{
+  "profiles": {
+    "FileBridge.Worker": { "commandName": "Project", "environmentVariables": { "DOTNET_ENVIRONMENT": "Development" } }
+  }
+}

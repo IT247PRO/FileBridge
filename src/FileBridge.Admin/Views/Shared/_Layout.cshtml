@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content="@Html.AntiForgeryToken()" />
+    <title>@ViewData["Title"] - FileBridge</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <div class="fb-shell">
+        <nav class="fb-rail">
+            <div class="fb-brand">FileBridge</div>
+            <a class="fb-link" href="/">Dashboard</a>
+            <a class="fb-link" href="/Jobs">Jobs</a>
+            <a class="fb-link" href="/History">History</a>
+            <a class="fb-link" href="/Quarantine">Quarantine</a>
+            <a class="fb-link" href="/Approvals">Approvals</a>
+            <a class="fb-link" href="/Endpoints">Endpoints</a>
+            <a class="fb-link" href="/EncryptionProfiles">Encryption</a>
+            <a class="fb-link" href="/Settings">Settings</a>
+            <a class="fb-link" href="/Audit">Audit</a>
+            <div class="fb-rail-spacer"></div>
+            <div class="fb-user">@User.Identity?.Name</div>
+        </nav>
+        <main class="fb-main">
+            @if (TempData["Message"] is string msg)
+            {
+                <div class="fb-flash">@msg</div>
+            }
+            @RenderBody()
+        </main>
+    </div>
+
+    <div id="fb-modal" class="modal" tabindex="-1" aria-labelledby="fb-modal-title" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fb-modal-title">Browse</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div id="fb-modal-body" class="modal-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
