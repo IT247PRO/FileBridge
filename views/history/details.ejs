@@ -1,0 +1,126 @@
+<%- include('../partials/header') %>
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h1>Transfer Execution Details</h1>
+            <span class="fb-badge <%= history.transferStatusId === 'Succeeded' ? 'ok' : history.transferStatusId === 'Failed' ? 'fail' : 'warn' %>">
+                <%= history.transferStatusId %>
+            </span>
+        </div>
+        <p class="fb-page-subtitle">File pipeline trace for <code class="fb-mono"><%= history.fileName %></code></p>
+    </div>
+    <div class="fb-page-actions">
+        <% if (history.transferStatusId === 'Failed') { %>
+            <form method="post" action="/History/Reprocess/<%= history.id %>" class="d-inline">
+                <button type="submit" class="btn-fb primary">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>Reprocess On Next Run</span>
+                </button>
+            </form>
+        <% } %>
+        <a class="btn-fb secondary" href="/History">Back to History</a>
+    </div>
+</div>
+
+<% if (history.errorMessage) { %>
+    <div class="fb-card fb-card-fail mb-4">
+        <div class="d-flex align-items-center gap-2 mb-2 text-danger fw-bold">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Transfer Failure Diagnostic:</span>
+        </div>
+        <div class="p-3 bg-white rounded border border-danger-subtle fb-mono text-danger small text-break">
+            <%= history.errorMessage %>
+        </div>
+    </div>
+<% } %>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="fb-card">
+            <h2 class="fb-card-title mb-3">Path & Routing Trace</h2>
+            <div class="mb-4 p-3 bg-light rounded border">
+                <div class="mb-2">
+                    <div class="text-muted small fw-semibold text-uppercase">Source Location</div>
+                    <div class="fb-mono text-main text-break"><%= history.sourcePath %></div>
+                </div>
+                <div class="my-2 d-flex align-items-center gap-2 text-muted">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    <span class="small fw-semibold">Pipeline Transfer</span>
+                </div>
+                <div>
+                    <div class="text-muted small fw-semibold text-uppercase">Destination Location</div>
+                    <div class="fb-mono text-main text-break"><%= history.destinationPath %></div>
+                </div>
+            </div>
+
+            <h2 class="fb-card-title mb-3">Execution Attributes</h2>
+            <div class="fb-table-container border-0 shadow-none mb-0">
+                <table class="fb-table">
+                    <tbody>
+                        <tr>
+                            <td class="fw-semibold text-muted" style="width: 200px;">Transfer Job</td>
+                            <td class="fw-bold text-main"><%= history.jobName %></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-semibold text-muted">Payload File Name</td>
+                            <td class="fb-mono"><%= history.fileName %></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-semibold text-muted">File Size</td>
+                            <td class="fb-mono"><%= (history.sizeBytes ? (history.sizeBytes / 1024).toFixed(1) + ' KB (' + history.sizeBytes.toLocaleString() + ' bytes)' : '0 B') %></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-semibold text-muted">Transfer Duration</td>
+                            <td class="fb-mono"><%= history.durationMs ? history.durationMs.toLocaleString() + ' ms' : '-' %></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-semibold text-muted">Delivery Attempts</td>
+                            <td><span class="fb-badge <%= history.attemptCount > 1 ? 'warn' : 'ok' %>"><%= history.attemptCount %> attempt(s)</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="fb-card h-100">
+            <h2 class="fb-card-title mb-3">Telemetry & Node</h2>
+            <div class="d-flex flex-column gap-3">
+                <div>
+                    <div class="text-muted small">Executing Worker Node</div>
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        <span class="fb-pulse-dot"></span>
+                        <span class="fb-mono fw-semibold"><%= history.nodeName || 'cluster-worker-01' %></span>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-muted small">Trigger Source</div>
+                    <div class="mt-1">
+                        <span class="fb-proto-tag"><%= history.triggeredBy || 'QuartzScheduler' %></span>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-muted small">Execution Start Time (UTC)</div>
+                    <div class="fb-mono small mt-1"><%= new Date(history.startedUtc).toISOString().replace('T', ' ').substring(0, 19) %></div>
+                </div>
+
+                <div>
+                    <div class="text-muted small">Completion Time (UTC)</div>
+                    <div class="fb-mono small mt-1"><%= history.completedUtc ? new Date(history.completedUtc).toISOString().replace('T', ' ').substring(0, 19) : '-' %></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('../partials/footer') %>

@@ -1,34 +1,96 @@
-@model List<TransferHistory>
-@{ ViewData["Title"] = "History"; var jobs = (List<Job>)ViewBag.Jobs; }
-<h1>Transfer history</h1>
-<form method="get" class="fb-form d-flex gap-3 align-items-end">
-    <div><label>Job</label>
-        <select name="jobId" asp-items="@(new SelectList(jobs, "Id", "Name", ViewBag.JobId))"><option value="">(all)</option></select>
-    </div>
-    <div><label>Status</label>
-        <select name="status" asp-items="Html.GetEnumSelectList<TransferStatus>()"><option value="">(all)</option></select>
-    </div>
-    <div><button type="submit" class="btn-fb secondary">Filter</button></div>
-    <div><a class="fb-textlink" asp-action="ExportCsv" asp-route-jobId="@ViewBag.JobId" asp-route-status="@ViewBag.Status">Export CSV</a></div>
-</form>
+@model IEnumerable<dynamic>
+@{
+    ViewData["Title"] = "Transfer History";
+    ViewData["ActiveNav"] = "history";
+}
 
-<table class="fb-table mt-3">
-    <thead><tr><th>Started (UTC)</th><th>Job</th><th>File</th><th>Status</th><th>Size</th><th>Duration</th></tr></thead>
-    <tbody>
-    @foreach (var h in Model)
-    {
-        var badge = h.TransferStatusId switch {
-            TransferStatus.Succeeded => "ok", TransferStatus.Failed => "fail",
-            TransferStatus.Quarantined => "quarantine", TransferStatus.InProgress => "warn", _ => "muted" };
-        <tr>
-            <td class="fb-mono">@h.StartedUtc.ToString("u")</td>
-            <td>@h.Job?.Name</td>
-            <td><a class="fb-textlink" asp-action="Details" asp-route-id="@h.Id">@h.FileName</a></td>
-            <td><span class="fb-badge @badge">@h.TransferStatusId</span></td>
-            <td>@h.SizeBytes</td>
-            <td>@(h.DurationMs is null ? "-" : $"{h.DurationMs} ms")</td>
-        </tr>
-    }
-    </tbody>
-</table>
-<p class="fb-empty">@ViewBag.Total total row(s), page @ViewBag.Page.</p>
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <h1>Transfer History</h1>
+        <p class="fb-page-subtitle">Detailed execution audit trail across all automated transfer pipelines and dry runs.</p>
+    </div>
+    <div class="fb-page-actions">
+        <a class="btn-fb secondary" href="/History">Refresh</a>
+    </div>
+</div>
+
+<div class="fb-table-container">
+    <div class="fb-table-toolbar">
+        <div class="fb-table-filter-group">
+            <button type="button" class="btn-fb secondary sm active" data-fb-filter-tab="all" data-fb-filter-target="fb-history-table">All Executions</button>
+            <button type="button" class="btn-fb secondary sm" data-fb-filter-tab="success" data-fb-filter-target="fb-history-table">Success</button>
+            <button type="button" class="btn-fb secondary sm" data-fb-filter-tab="failed" data-fb-filter-target="fb-history-table">Failed</button>
+            <button type="button" class="btn-fb secondary sm" data-fb-filter-tab="running" data-fb-filter-target="fb-history-table">Running</button>
+        </div>
+        <span class="text-muted small">Retained in database per retention rules</span>
+    </div>
+
+    <table class="fb-table" id="fb-history-table">
+        <thead>
+            <tr>
+                <th>Job &amp; Correlation ID</th>
+                <th>Status</th>
+                <th>Files Transferred</th>
+                <th>Volume</th>
+                <th>Started (UTC)</th>
+                <th>Duration</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        @if (!Model.Any()) {
+            <tr>
+                <td colspan="7" class="fb-empty">
+                    <div>No transfer history records found matching criteria.</div>
+                </td>
+            </tr>
+        } else {
+            @foreach (var h in Model) {
+                var status = (string)(h.StatusName ?? "Success");
+                var statusLower = status.ToLowerInvariant();
+                <tr data-filter="@statusLower">
+                    <td>
+                        <div class="fw-bold text-main">
+                            <a href="/History/Details/@h.Id" class="fb-textlink" style="color: var(--fb-text-main); font-weight: 700;">
+                                @(h.JobName ?? "Direct Task")
+                            </a>
+                        </div>
+                        <div class="text-muted small fb-mono">@h.CorrelationId</div>
+                    </td>
+                    <td>
+                        @if (statusLower == "success") {
+                            <span class="fb-badge ok">Success</span>
+                        } else if (statusLower == "failed") {
+                            <span class="fb-badge fail">Failed</span>
+                        } else {
+                            <span class="fb-badge info">Running</span>
+                        }
+                    </td>
+                    <td>
+                        <span class="fb-mono fw-semibold">@h.FilesTransferred</span>
+                        @if (h.FilesFailed > 0) {
+                            <span class="text-danger small ms-1">(@h.FilesFailed failed)</span>
+                        }
+                    </td>
+                    <td class="fb-mono">
+                        @{
+                            long bytes = (long)(h.BytesTransferred ?? 0);
+                            double mb = bytes / (1024.0 * 1024.0);
+                        }
+                        @mb.ToString("0.0") MB
+                    </td>
+                    <td class="fb-mono text-muted small">
+                        @h.StartedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")
+                    </td>
+                    <td class="fb-mono text-muted small">
+                        @(h.DurationSeconds != null ? h.DurationSeconds + "s" : "-")
+                    </td>
+                    <td class="text-end">
+                        <a class="btn-fb secondary sm" href="/History/Details/@h.Id">Details</a>
+                    </td>
+                </tr>
+            }
+        }
+        </tbody>
+    </table>
+</div>

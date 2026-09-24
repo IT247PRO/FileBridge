@@ -1,23 +1,94 @@
-@model List<Quarantine>
-@{ ViewData["Title"] = "Quarantine"; }
-<h1>Quarantine</h1>
-@if (Model.Count == 0) { <div class="fb-empty">Nothing held for review.</div> }
-<table class="fb-table">
-    <thead><tr><th>Held (UTC)</th><th>Job</th><th>File</th><th>Reason</th><th></th></tr></thead>
-    <tbody>
-    @foreach (var q in Model)
-    {
-        <tr>
-            <td class="fb-mono">@q.CreatedUtc.ToString("u")</td>
-            <td>@q.Job?.Name</td>
-            <td>@System.IO.Path.GetFileName(q.OriginalPath)</td>
-            <td>@q.Reason</td>
-            <td>
-                <button class="btn-fb secondary" data-fb-action="post-poll" data-fb-url="/Quarantine/Release/@q.Id" data-fb-result="q-@q.Id">Release</button>
-                <button class="btn-fb danger" data-fb-action="post-poll" data-fb-url="/Quarantine/Discard/@q.Id" data-fb-result="q-@q.Id">Discard</button>
-                <div id="q-@q.Id" class="mt-2"></div>
-            </td>
-        </tr>
-    }
-    </tbody>
-</table>
+@model IEnumerable<dynamic>
+@{
+    ViewData["Title"] = "Quarantine Vault";
+    ViewData["ActiveNav"] = "quarantine";
+}
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <h1>Quarantine Vault</h1>
+        <p class="fb-page-subtitle">Security review workspace for suspicious or blocked payloads quarantined during ingestion.</p>
+    </div>
+    <div class="fb-page-actions">
+        <a class="btn-fb secondary" href="/Quarantine">Refresh Vault</a>
+    </div>
+</div>
+
+<div class="fb-table-container">
+    <div class="fb-table-toolbar">
+        <div class="fb-table-filter-group">
+            <button type="button" class="btn-fb secondary sm active" data-fb-filter-tab="all" data-fb-filter-target="fb-quarantine-table">All Items (@Model.Count())</button>
+            <button type="button" class="btn-fb secondary sm" data-fb-filter-tab="held" data-fb-filter-target="fb-quarantine-table">Held</button>
+            <button type="button" class="btn-fb secondary sm" data-fb-filter-tab="released" data-fb-filter-target="fb-quarantine-table">Released</button>
+            <button type="button" class="btn-fb secondary sm" data-fb-filter-tab="discarded" data-fb-filter-target="fb-quarantine-table">Discarded</button>
+        </div>
+        <span class="text-muted small">Vault encryption active: AES-256-GCM</span>
+    </div>
+
+    <table class="fb-table" id="fb-quarantine-table">
+        <thead>
+            <tr>
+                <th>File / Source Path</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th>SHA-256</th>
+                <th>Quarantined At</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        @if (!Model.Any()) {
+            <tr>
+                <td colspan="6" class="fb-empty">
+                    <div>No files currently in quarantine vault.</div>
+                </td>
+            </tr>
+        } else {
+            @foreach (var q in Model) {
+                var status = (string)(q.StatusName ?? "Held");
+                var statusLower = status.ToLowerInvariant();
+                <tr data-filter="@statusLower">
+                    <td>
+                        <div class="fw-bold text-main">@q.OriginalFileName</div>
+                        <div class="text-muted small fb-mono">@q.SourcePath</div>
+                    </td>
+                    <td>
+                        <span class="fb-badge fail">@q.Reason</span>
+                    </td>
+                    <td>
+                        @if (statusLower == "held") {
+                            <span class="fb-badge quarantine">Held</span>
+                        } else if (statusLower == "released") {
+                            <span class="fb-badge ok">Released</span>
+                        } else {
+                            <span class="fb-badge muted">Discarded</span>
+                        }
+                    </td>
+                    <td>
+                        <code class="fb-mono text-muted small" title="@q.Sha256">
+                            @(q.Sha256 != null && q.Sha256.Length > 16 ? q.Sha256.Substring(0, 16) + "..." : q.Sha256)
+                        </code>
+                    </td>
+                    <td class="fb-mono text-muted small">
+                        @q.QuarantinedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")
+                    </td>
+                    <td class="text-end">
+                        @if (statusLower == "held") {
+                            <div class="d-inline-flex align-items-center gap-1">
+                                <form method="post" action="/Quarantine/Release/@q.Id" class="d-inline">
+                                    <button type="submit" class="btn-fb secondary sm" onclick="return confirm('Release file to destination?');">Release</button>
+                                </form>
+                                <form method="post" action="/Quarantine/Discard/@q.Id" class="d-inline">
+                                    <button type="submit" class="btn-fb danger sm" onclick="return confirm('Discard and purge quarantined file?');">Discard</button>
+                                </form>
+                            </div>
+                        } else {
+                            <span class="text-muted small">Closed</span>
+                        }
+                    </td>
+                </tr>
+            }
+        }
+        </tbody>
+    </table>
+</div>

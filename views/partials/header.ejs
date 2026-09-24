@@ -3,17 +3,13 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="csrf-token" content="@(GetCsrfToken())" />
-    <title>@(ViewData["Title"] ?? "FileBridge") - FileBridge Admin</title>
+    <meta name="csrf-token" content="<%= typeof csrfToken !== 'undefined' ? csrfToken : 'fb-token' %>" />
+    <title><%= typeof title !== 'undefined' ? title : 'FileBridge' %> - FileBridge Admin</title>
     <meta name="description" content="Enterprise file transfer bridge service with jobs, history, quarantine, endpoints, and approval workflows." />
-    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" />
-    @functions {
-        public string GetCsrfToken() {
-            var tokens = Context.RequestServices.GetService(typeof(Microsoft.AspNetCore.Antiforgery.IAntiforgery)) as Microsoft.AspNetCore.Antiforgery.IAntiforgery;
-            return tokens?.GetAndStoreTokens(Context).RequestToken ?? "";
-        }
-    }
+    <meta property="og:title" content="<%= typeof title !== 'undefined' ? title : 'FileBridge' %> - FileBridge" />
+    <meta property="og:description" content="Enterprise file transfer bridge service with jobs, history, quarantine, endpoints, and approval workflows." />
+    <link rel="stylesheet" href="/lib/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="/css/site.css" />
 </head>
 <body>
     <div class="fb-shell">
@@ -30,7 +26,7 @@
                 <div class="fb-profile-card">
                     <div class="fb-profile-avatar">AD</div>
                     <div class="overflow-hidden">
-                        <div class="fb-profile-name text-truncate">@(User?.Identity?.Name ?? "AGENCY\\admin")</div>
+                        <div class="fb-profile-name text-truncate"><%= typeof currentUser !== 'undefined' && currentUser ? currentUser : 'AGENCY\\admin' %></div>
                         <div class="fb-profile-sub">Cluster Administrator</div>
                     </div>
                 </div>
@@ -58,7 +54,7 @@
                 <ul class="grid-menu app-menu">
                     <!-- Dashboard -->
                     <li>
-                        <a href="/" class="@(ViewData["ActiveNav"] as string == "dashboard" ? "active" : "")" title="Dashboard">
+                        <a href="/" class="<%= typeof activeNav !== 'undefined' && activeNav === 'dashboard' ? 'active' : '' %>" title="Dashboard">
                             <div class="app-card">
                                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -70,7 +66,7 @@
 
                     <!-- Jobs -->
                     <li>
-                        <a href="/Jobs" class="@(ViewData["ActiveNav"] as string == "jobs" ? "active" : "")" title="Transfer Jobs">
+                        <a href="/Jobs" class="<%= typeof activeNav !== 'undefined' && activeNav === 'jobs' ? 'active' : '' %>" title="Transfer Jobs">
                             <div class="app-card">
                                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -82,7 +78,7 @@
 
                     <!-- History -->
                     <li>
-                        <a href="/History" class="@(ViewData["ActiveNav"] as string == "history" ? "active" : "")" title="Transfer History">
+                        <a href="/History" class="<%= typeof activeNav !== 'undefined' && activeNav === 'history' ? 'active' : '' %>" title="Transfer History">
                             <div class="app-card">
                                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -94,7 +90,7 @@
 
                     <!-- Quarantine -->
                     <li>
-                        <a href="/Quarantine" class="@(ViewData["ActiveNav"] as string == "quarantine" ? "active" : "")" title="Quarantine Vault">
+                        <a href="/Quarantine" class="<%= typeof activeNav !== 'undefined' && activeNav === 'quarantine' ? 'active' : '' %>" title="Quarantine Vault">
                             <div class="app-card">
                                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -106,7 +102,7 @@
 
                     <!-- Approvals -->
                     <li>
-                        <a href="/Approvals" class="@(ViewData["ActiveNav"] as string == "approvals" ? "active" : "")" title="Four-Eyes Approvals">
+                        <a href="/Approvals" class="<%= typeof activeNav !== 'undefined' && activeNav === 'approvals' ? 'active' : '' %>" title="Four-Eyes Approvals">
                             <div class="app-card">
                                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -118,7 +114,7 @@
 
                     <!-- Endpoints -->
                     <li>
-                        <a href="/Endpoints" class="@(ViewData["ActiveNav"] as string == "endpoints" ? "active" : "")" title="Endpoints">
+                        <a href="/Endpoints" class="<%= typeof activeNav !== 'undefined' && activeNav === 'endpoints' ? 'active' : '' %>" title="Endpoints">
                             <div class="app-card">
                                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
@@ -130,7 +126,7 @@
 
                     <!-- Encryption -->
                     <li>
-                        <a href="/EncryptionProfiles" class="@(ViewData["ActiveNav"] as string == "encryption" ? "active" : "")" title="Encryption Profiles">
+                        <a href="/EncryptionProfiles" class="<%= typeof activeNav !== 'undefined' && activeNav === 'encryption' ? 'active' : '' %>" title="Encryption Profiles">
                             <div class="app-card">
                                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -142,7 +138,7 @@
 
                     <!-- Settings -->
                     <li>
-                        <a href="/Settings" class="@(ViewData["ActiveNav"] as string == "settings" ? "active" : "")" title="System Settings">
+                        <a href="/Settings" class="<%= typeof activeNav !== 'undefined' && activeNav === 'settings' ? 'active' : '' %>" title="System Settings">
                             <div class="app-card">
                                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -155,7 +151,7 @@
 
                     <!-- Audit Log -->
                     <li>
-                        <a href="/Audit" class="@(ViewData["ActiveNav"] as string == "audit" ? "active" : "")" title="Audit Log">
+                        <a href="/Audit" class="<%= typeof activeNav !== 'undefined' && activeNav === 'audit' ? 'active' : '' %>" title="Audit Log">
                             <div class="app-card">
                                 <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -186,7 +182,7 @@
                     <div class="fb-breadcrumbs">
                         <a href="/">FileBridge</a>
                         <span>/</span>
-                        <span class="fb-breadcrumbs-current">@(ViewData["Title"] ?? "Dashboard")</span>
+                        <span class="fb-breadcrumbs-current"><%= typeof title !== 'undefined' ? title : 'Dashboard' %></span>
                     </div>
                 </div>
 
@@ -201,79 +197,18 @@
 
                     <div class="fb-user-chip">
                         <div class="fb-user-avatar">AD</div>
-                        <span class="fb-user-name">@(User?.Identity?.Name ?? "AGENCY\\admin")</span>
+                        <span class="fb-user-name"><%= typeof currentUser !== 'undefined' && currentUser ? currentUser : 'AGENCY\\admin' %></span>
                     </div>
                 </div>
             </header>
 
             <!-- Main Content Viewport -->
             <main class="fb-main">
-                @if (TempData["Flash"] != null) {
-                    <div class="fb-flash mb-4">
-                        <span>@TempData["Flash"]</span>
+                <% if (typeof flashMessage !== 'undefined' && flashMessage) { %>
+                    <div class="fb-flash">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span><%= flashMessage %></span>
                     </div>
-                }
-                @RenderBody()
-            </main>
-        </div>
-    </div>
-
-    <!-- General Bootstrap Modal for Connection Tests, Dry Runs, Browse & Diffs -->
-    <div id="fb-modal" class="modal fade" tabindex="-1" aria-labelledby="fb-modal-title" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content" style="border-radius: var(--fb-radius-lg); border: 1px solid var(--fb-border); box-shadow: var(--fb-shadow-lg);">
-                <div class="modal-header" style="background-color: var(--fb-surface-subtle); border-bottom: 1px solid var(--fb-border); padding: 16px 22px;">
-                    <h5 class="modal-title" id="fb-modal-title" style="font-size: 16px; font-weight: 700; color: var(--fb-text-main);">FileBridge Action</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div id="fb-modal-body" class="modal-body" style="padding: 22px; font-size: 13px;">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quick Search / Command Palette Modal -->
-    <div id="fb-search-modal" class="fb-modal-backdrop" tabindex="-1" aria-hidden="true">
-        <div class="fb-modal-window" style="max-width: 560px;">
-            <div class="fb-modal-head" style="border-bottom: 1px solid var(--fb-border); padding: 14px 18px;">
-                <input type="text" id="fb-search-input" placeholder="Type to jump to Jobs, Endpoints, or Pages..." style="width: 100%; border: none; outline: none; font-size: 14px; background: transparent; font-family: var(--fb-font-sans);" autocomplete="off" />
-                <button type="button" class="fb-modal-close-btn" id="fb-search-close">&times;</button>
-            </div>
-            <div class="fb-modal-body" id="fb-search-results" style="max-height: 380px; padding: 10px 14px;">
-                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--fb-text-subtle); margin-bottom: 6px; padding: 4px 8px;">Navigation</div>
-                <div class="fb-search-item" data-url="/Jobs" style="padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
-                    <span>Transfer Jobs</span>
-                    <span style="font-size: 11px; color: var(--fb-text-subtle);">/Jobs</span>
-                </div>
-                <div class="fb-search-item" data-url="/Endpoints" style="padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
-                    <span>Endpoints</span>
-                    <span style="font-size: 11px; color: var(--fb-text-subtle);">/Endpoints</span>
-                </div>
-                <div class="fb-search-item" data-url="/History" style="padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
-                    <span>Transfer History</span>
-                    <span style="font-size: 11px; color: var(--fb-text-subtle);">/History</span>
-                </div>
-                <div class="fb-search-item" data-url="/Quarantine" style="padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
-                    <span>Quarantine</span>
-                    <span style="font-size: 11px; color: var(--fb-text-subtle);">/Quarantine</span>
-                </div>
-                <div class="fb-search-item" data-url="/Approvals" style="padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
-                    <span>Change Approvals</span>
-                    <span style="font-size: 11px; color: var(--fb-text-subtle);">/Approvals</span>
-                </div>
-                <div class="fb-search-item" data-url="/Settings" style="padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
-                    <span>System Settings</span>
-                    <span style="font-size: 11px; color: var(--fb-text-subtle);">/Settings</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast Notification Container -->
-    <div id="fb-toast-container"></div>
-
-    <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js"></script>
-    @RenderSection("Scripts", required: false)
-</body>
-</html>
+                <% } %>

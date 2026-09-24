@@ -1,0 +1,147 @@
+<%- include('../partials/header') %>
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <h1>Transfer Jobs</h1>
+        <p class="fb-page-subtitle">Configure, schedule, and orchestrate automated file transfers between hybrid endpoints.</p>
+    </div>
+    <div class="fb-page-actions">
+        <!-- JSON Import Trigger Form -->
+        <form method="post" action="/Jobs/Import" enctype="multipart/form-data" class="d-inline-flex align-items-center">
+            <label for="fb-job-import-file" class="btn-fb secondary" style="cursor: pointer; margin-bottom: 0;">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                <span>Import JSON</span>
+            </label>
+            <input type="file" id="fb-job-import-file" name="file" accept=".json" required style="display: none;" onchange="if (this.files.length) this.form.submit();" />
+        </form>
+
+        <a class="btn-fb primary" href="/Jobs/Create">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Create Transfer Job</span>
+        </a>
+    </div>
+</div>
+
+<div class="fb-table-container">
+    <!-- Filter Toolbar -->
+    <div class="fb-table-toolbar">
+        <div class="fb-table-filter-group">
+            <button type="button" class="btn-fb secondary sm active" data-fb-filter-tab="all" data-fb-filter-target="fb-jobs-table">All Jobs (<%= jobs ? jobs.length : 0 %>)</button>
+            <button type="button" class="btn-fb secondary sm" data-fb-filter-tab="active" data-fb-filter-target="fb-jobs-table">Active</button>
+            <button type="button" class="btn-fb secondary sm" data-fb-filter-tab="paused" data-fb-filter-target="fb-jobs-table">Paused</button>
+            <button type="button" class="btn-fb secondary sm" data-fb-filter-tab="disabled" data-fb-filter-target="fb-jobs-table">Disabled</button>
+        </div>
+        <div>
+            <span class="text-muted small">Showing configured Quartz pipeline jobs</span>
+        </div>
+    </div>
+
+    <table class="fb-table" id="fb-jobs-table">
+        <thead>
+            <tr>
+                <th>Job Specification</th>
+                <th>Transfer Route</th>
+                <th>Schedule</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        <% if (!jobs || jobs.length === 0) { %>
+            <tr>
+                <td colspan="5" class="fb-empty">
+                    <svg width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-muted mb-2">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <div>No transfer jobs configured. Click "Create Transfer Job" to get started.</div>
+                </td>
+            </tr>
+        <% } else { %>
+            <% jobs.forEach(function(j) { 
+                var statusClass = !j.isEnabled ? 'disabled' : (j.isPaused ? 'paused' : 'active');
+            %>
+                <tr data-filter="<%= statusClass %>">
+                    <td>
+                        <div class="fw-bold text-main">
+                            <a href="/Jobs/Edit/<%= j.id %>" class="fb-textlink" style="color: var(--fb-text-main); font-weight: 700;">
+                                <%= j.name %>
+                            </a>
+                        </div>
+                        <% if (j.description) { %>
+                            <div class="text-muted small"><%= j.description %></div>
+                        <% } %>
+                    </td>
+                    <td>
+                        <div class="fb-route-visualizer">
+                            <div class="fb-route-node" title="<%= j.sourceEndpoint?.name || 'Source' %>">
+                                <span class="fb-proto-tag smb"><%= j.sourceEndpoint?.endpointTypeId === 1 ? 'SMB' : (j.sourceEndpoint?.endpointTypeId === 2 ? 'SFTP' : (j.sourceEndpoint?.endpointTypeId === 3 ? 'HTTPS' : 'DISK')) %></span>
+                                <span><%= j.sourceEndpoint?.name || 'Unknown' %></span>
+                            </div>
+                            <div class="fb-route-arrow">
+                                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                            </div>
+                            <div class="fb-route-node" title="<%= j.destinationEndpoint?.name || 'Destination' %>">
+                                <span class="fb-proto-tag sftp"><%= j.destinationEndpoint?.endpointTypeId === 1 ? 'SMB' : (j.destinationEndpoint?.endpointTypeId === 2 ? 'SFTP' : (j.destinationEndpoint?.endpointTypeId === 3 ? 'HTTPS' : 'DISK')) %></span>
+                                <span><%= j.destinationEndpoint?.name || 'Unknown' %></span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-1">
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-muted">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span class="fb-mono small">
+                                <%= j.scheduleTypeId === 1 ? (j.cronExpression || '0 0/5 * * * ?') : ('every ' + (j.intervalSeconds || 300) + 's') %>
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        <% if (!j.isEnabled) { %>
+                            <span class="fb-badge muted">Disabled</span>
+                        <% } else if (j.isPaused) { %>
+                            <span class="fb-badge warn">Paused</span>
+                        <% } else { %>
+                            <span class="fb-badge ok">Active</span>
+                        <% } %>
+                    </td>
+                    <td class="text-end">
+                        <div class="d-inline-flex align-items-center gap-1">
+                            <button type="button" class="btn-fb secondary sm" data-fb-action="post-poll" data-fb-url="/Jobs/DryRun/<%= j.id %>" data-fb-render="dryrun" data-fb-title="Dry Run Pre-flight: <%= j.name %>" title="Inspect planned file transfers without moving files">
+                                <span>Dry run</span>
+                            </button>
+                            <button type="button" class="btn-fb secondary sm" data-fb-action="post-poll" data-fb-url="/Jobs/RunNow/<%= j.id %>" data-fb-render="message" data-fb-title="Execute Job Now: <%= j.name %>" title="Trigger immediate pipeline run on cluster">
+                                <span>Run now</span>
+                            </button>
+                            <form method="post" action="/Jobs/TogglePause/<%= j.id %>" class="d-inline">
+                                <button type="submit" class="btn-fb secondary sm" title="<%= j.isPaused ? 'Resume scheduled executions' : 'Pause scheduled executions' %>">
+                                    <span><%= j.isPaused ? 'Resume' : 'Pause' %></span>
+                                </button>
+                            </form>
+                            <a class="btn-fb primary sm" href="/Jobs/Edit/<%= j.id %>" title="Edit Job Settings">
+                                <span>Edit</span>
+                            </a>
+                            <a class="btn-fb secondary sm" href="/Jobs/Versions/<%= j.id %>" title="Version Snapshots & Rollback">
+                                <span>Snapshots</span>
+                            </a>
+                            <a class="btn-fb secondary sm" href="/Jobs/Export/<%= j.id %>" title="Export Configuration JSON">
+                                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            <% }); %>
+        <% } %>
+        </tbody>
+    </table>
+</div>
+
+<%- include('../partials/footer') %>

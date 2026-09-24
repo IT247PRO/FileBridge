@@ -1,0 +1,73 @@
+<%- include('../partials/header') %>
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h1>Four-Eyes Change Approvals</h1>
+            <% if (approvals && approvals.length > 0) { %>
+                <span class="fb-badge warn"><%= approvals.length %> Pending Review</span>
+            <% } else { %>
+                <span class="fb-badge ok">Queue Clear</span>
+            <% } %>
+        </div>
+        <p class="fb-page-subtitle">Segregation of duties: High-impact changes to transfer routes and endpoints require secondary operator approval.</p>
+    </div>
+</div>
+
+<% if (!approvals || approvals.length === 0) { %>
+    <div class="fb-card">
+        <div class="fb-empty">
+            <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-success mb-2">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div class="fw-bold text-main">No pending approvals</div>
+            <div class="text-muted small mt-1">All job and endpoint configuration changes have been reviewed and applied.</div>
+        </div>
+    </div>
+<% } else { %>
+    <div class="d-flex flex-column gap-4">
+        <% approvals.forEach(function(c) { %>
+            <div class="fb-card p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fb-badge warn">Pending Review</span>
+                        <h2 class="fb-card-title mb-0">
+                            <%= c.entityName %> <%= c.entityKey ? '#' + c.entityKey : '(New Entity)' %>
+                        </h2>
+                    </div>
+                    <div class="text-muted small">
+                        Requested by <strong class="text-main fb-mono"><%= c.requestedBy %></strong> on <%= new Date(c.requestedUtc).toISOString().replace('T', ' ').substring(0, 19) %> UTC
+                    </div>
+                </div>
+
+                <div class="p-3 bg-light rounded border mb-3">
+                    <div class="text-muted small fw-semibold text-uppercase mb-2">Configuration Proposed Payload:</div>
+                    <pre class="fb-mono pre-wrap small text-main m-0" style="max-height: 240px; overflow-y: auto;"><%= c.payloadJson %></pre>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 pt-2 border-top">
+                    <form method="post" action="/Approvals/Approve/<%= c.id %>" class="d-inline" data-fb-confirm="Approve and apply this configuration change into production?">
+                        <button type="submit" class="btn-fb primary">
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span>Approve &amp; Deploy Change</span>
+                        </button>
+                    </form>
+
+                    <form method="post" action="/Approvals/Reject/<%= c.id %>" class="d-inline-flex align-items-center gap-2" data-fb-confirm="Reject this pending change request?">
+                        <input type="text" name="comment" placeholder="Rejection reason (optional)" class="form-control form-control-sm" style="min-width: 240px; height: 32px; font-size: 13px;" />
+                        <button type="submit" class="btn-fb danger sm">
+                            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            <span>Reject</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        <% }); %>
+    </div>
+<% } %>
+
+<%- include('../partials/footer') %>

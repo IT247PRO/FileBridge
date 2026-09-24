@@ -1,39 +1,136 @@
-@model List<Job>
-@{ ViewData["Title"] = "Jobs"; }
-<h1>Jobs</h1>
-<p><a class="btn-fb" asp-action="Create">Add job</a>
-<form method="post" asp-action="Import" enctype="multipart/form-data" class="d-inline-block ms-2">
-    <input type="file" name="file" accept=".json" /> <button type="submit" class="btn-fb secondary">Import</button>
-</form></p>
-<table class="fb-table">
-    <thead><tr><th>Job</th><th>Route</th><th>Schedule</th><th>Status</th><th></th></tr></thead>
-    <tbody>
-    @foreach (var j in Model)
-    {
-        <tr>
-            <td>@j.Name</td>
-            <td>
-                <div class="fb-lane">
-                    <span class="ep">@j.SourceEndpoint?.Name</span>
-                    <span class="track"></span>
-                    <span class="ep">@j.DestinationEndpoint?.Name</span>
-                </div>
-            </td>
-            <td class="fb-mono text-xs">@(j.ScheduleTypeId == ScheduleType.Cron ? j.CronExpression : $"every {j.IntervalSeconds}s")</td>
-            <td>
-                @if (!j.IsEnabled) { <span class="fb-badge muted">Disabled</span> }
-                else if (j.IsPaused) { <span class="fb-badge warn">Paused</span> }
-                else { <span class="fb-badge ok">Active</span> }
-            </td>
-            <td>
-                <button class="btn-fb secondary" data-fb-action="post-poll" data-fb-url="/Jobs/DryRun/@j.Id" data-fb-result="dr-@j.Id">Dry run</button>
-                <button class="btn-fb secondary" data-fb-action="post-poll" data-fb-url="/Jobs/RunNow/@j.Id" data-fb-result="dr-@j.Id">Run now</button>
-                <form method="post" asp-action="TogglePause" asp-route-id="@j.Id" class="d-inline"><button type="submit" class="btn-fb secondary">@(j.IsPaused ? "Resume" : "Pause")</button></form>
-                <a class="fb-textlink" asp-action="Edit" asp-route-id="@j.Id">Edit</a>
-                <a class="fb-textlink" asp-action="Versions" asp-route-id="@j.Id">History</a>
-                <div id="dr-@j.Id" class="mt-2"></div>
-            </td>
-        </tr>
-    }
-    </tbody>
-</table>
+@model IEnumerable<dynamic>
+@{
+    ViewData["Title"] = "Transfer Jobs";
+    ViewData["ActiveNav"] = "jobs";
+}
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <h1>Transfer Jobs</h1>
+        <p class="fb-page-subtitle">Scheduled automated file transfers across SFTP servers, network shares, and REST APIs.</p>
+    </div>
+    <div class="fb-page-actions">
+        <button type="button" class="btn-fb secondary" onclick="document.getElementById('importFileInput').click()">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            <span>Import Job</span>
+        </button>
+        <form id="importForm" method="post" action="/Jobs/Import" enctype="multipart/form-data" class="d-none">
+            <input type="file" id="importFileInput" name="file" accept=".json" onchange="document.getElementById('importForm').submit()" />
+        </form>
+
+        <a class="btn-fb primary" href="/Jobs/Create">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Add Transfer Job</span>
+        </a>
+    </div>
+</div>
+
+<div class="fb-table-container">
+    <div class="fb-table-toolbar">
+        <div class="fb-table-filter-group">
+            <button type="button" class="btn-fb secondary sm active" data-fb-filter-tab="all" data-fb-filter-target="fb-jobs-table">All Jobs (@Model.Count())</button>
+            <button type="button" class="btn-fb secondary sm" data-fb-filter-tab="active" data-fb-filter-target="fb-jobs-table">Active</button>
+            <button type="button" class="btn-fb secondary sm" data-fb-filter-tab="paused" data-fb-filter-target="fb-jobs-table">Paused</button>
+            <button type="button" class="btn-fb secondary sm" data-fb-filter-tab="failing" data-fb-filter-target="fb-jobs-table">Failing</button>
+        </div>
+        <span class="text-muted small">Real-time quartz trigger status</span>
+    </div>
+
+    <table class="fb-table" id="fb-jobs-table">
+        <thead>
+            <tr>
+                <th>Job Name &amp; Description</th>
+                <th>Transfer Route</th>
+                <th>Quartz Schedule</th>
+                <th>Status</th>
+                <th>Health</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        @if (!Model.Any()) {
+            <tr>
+                <td colspan="6" class="fb-empty">
+                    <svg width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-muted mb-2">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    <div>No transfer jobs configured yet. Click "Add Transfer Job" to configure one.</div>
+                </td>
+            </tr>
+        } else {
+            @foreach (var j in Model) {
+                var isPaused = (bool)(j.IsPaused ?? false);
+                var isEnabled = (bool)(j.IsEnabled ?? true);
+                var hasFailures = (int)(j.ConsecutiveFailures ?? 0) > 0;
+                var filterClass = hasFailures ? "failing" : (isPaused ? "paused" : "active");
+                <tr>
+                    <td data-filter="@filterClass">
+                        <div class="fw-bold text-main">
+                            <a href="/Jobs/Edit/@j.Id" class="fb-textlink" style="color: var(--fb-text-main); font-weight: 700;">
+                                @j.Name
+                            </a>
+                        </div>
+                        @if (!string.IsNullOrEmpty(j.Description)) {
+                            <div class="text-muted small">@j.Description</div>
+                        }
+                    </td>
+                    <td>
+                        <div class="fb-route-visualizer">
+                            <span class="fb-proto-tag sftp">@(j.SourceEndpointName ?? "Source")</span>
+                            <span class="fb-route-arrow">
+                                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                            </span>
+                            <span class="fb-proto-tag smb">@(j.DestinationEndpointName ?? "Destination")</span>
+                        </div>
+                    </td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(j.CronExpression)) {
+                            <div class="d-flex align-items-center gap-1">
+                                <span class="fb-badge info">Cron</span>
+                                <code class="fb-mono small">@j.CronExpression</code>
+                            </div>
+                        } else if (j.IntervalSeconds != null) {
+                            <span class="fb-badge info">Every @j.IntervalSeconds s</span>
+                        } else {
+                            <span class="text-muted small">Manual Only</span>
+                        }
+                    </td>
+                    <td>
+                        @if (!isEnabled) {
+                            <span class="fb-badge muted">Disabled</span>
+                        } else if (isPaused) {
+                            <span class="fb-badge warn">Paused</span>
+                        } else {
+                            <span class="fb-badge ok">Active</span>
+                        }
+                    </td>
+                    <td>
+                        @if (hasFailures) {
+                            <span class="fb-badge fail">@j.ConsecutiveFailures fails</span>
+                        } else {
+                            <span class="fb-badge ok">Clean</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <div class="d-inline-flex align-items-center gap-1">
+                            <button type="button" class="btn-fb secondary sm" data-fb-action="post-poll" data-fb-url="/Jobs/DryRun/@j.Id" data-fb-render="dryrun" data-fb-title="Dry Run: @j.Name">
+                                <span>Dry Run</span>
+                            </button>
+                            <button type="button" class="btn-fb primary sm" data-fb-action="post-poll" data-fb-url="/Jobs/RunNow/@j.Id" data-fb-render="message" data-fb-title="Run Now: @j.Name" data-fb-confirm="Execute transfer pipeline immediately for @j.Name?">
+                                <span>Run Now</span>
+                            </button>
+                            <a class="btn-fb secondary sm" href="/Jobs/Edit/@j.Id">Edit</a>
+                        </div>
+                    </td>
+                </tr>
+            }
+        }
+        </tbody>
+    </table>
+</div>

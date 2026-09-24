@@ -1,0 +1,63 @@
+            </main>
+        </div>
+    </div>
+
+    <!-- General Bootstrap Modal for Connection Tests, Dry Runs, Browse & Diffs -->
+    <div id="fb-modal" class="modal fade" tabindex="-1" aria-labelledby="fb-modal-title" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content" style="border-radius: var(--fb-radius-lg); border: 1px solid var(--fb-border); box-shadow: var(--fb-shadow-lg);">
+                <div class="modal-header" style="background-color: var(--fb-bg-surface); border-bottom: 1px solid var(--fb-border); padding: 16px 22px;">
+                    <h5 class="modal-title" id="fb-modal-title" style="font-size: 16px; font-weight: 700; color: var(--fb-text-main);">FileBridge Action</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div id="fb-modal-body" class="modal-body" style="padding: 22px; font-size: 13px;">
+                    <!-- Dynamically populated by site.js -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Search / Command Palette Modal -->
+    <div id="fb-search-modal" class="fb-modal-backdrop" tabindex="-1" aria-hidden="true">
+        <div class="fb-modal-window" style="max-width: 560px;">
+            <div class="fb-modal-head" style="border-bottom: 1px solid var(--fb-border); padding: 14px 18px;">
+                <input type="text" id="fb-search-input" placeholder="Type to jump to Jobs, Endpoints, or Pages..." style="width: 100%; border: none; outline: none; font-size: 14px; background: transparent; font-family: var(--fb-font-sans);" autocomplete="off" />
+                <button type="button" class="fb-modal-close-btn" id="fb-search-close">&times;</button>
+            </div>
+            <div class="fb-modal-body" id="fb-search-results" style="max-height: 380px; padding: 10px 14px;">
+                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--fb-text-subtle); margin-bottom: 6px; padding: 4px 8px;">Navigation</div>
+                <div class="fb-search-item" data-url="/Jobs" style="padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                    <span>Transfer Jobs</span>
+                    <span style="font-size: 11px; color: var(--fb-text-subtle);">/Jobs</span>
+                </div>
+                <div class="fb-search-item" data-url="/Endpoints" style="padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                    <span>Endpoints</span>
+                    <span style="font-size: 11px; color: var(--fb-text-subtle);">/Endpoints</span>
+                </div>
+                <div class="fb-search-item" data-url="/History" style="padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                    <span>Transfer History</span>
+                    <span style="font-size: 11px; color: var(--fb-text-subtle);">/History</span>
+                </div>
+                <div class="fb-search-item" data-url="/Quarantine" style="padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                    <span>Quarantine</span>
+                    <span style="font-size: 11px; color: var(--fb-text-subtle);">/Quarantine</span>
+                </div>
+                <div class="fb-search-item" data-url="/Approvals" style="padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                    <span>Change Approvals</span>
+                    <span style="font-size: 11px; color: var(--fb-text-subtle);">/Approvals</span>
+                </div>
+                <div class="fb-search-item" data-url="/Settings" style="padding: 8px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                    <span>System Settings</span>
+                    <span style="font-size: 11px; color: var(--fb-text-subtle);">/Settings</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="fb-toast-container"></div>
+
+    <script src="/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/site.js"></script>
+</body>
+</html>

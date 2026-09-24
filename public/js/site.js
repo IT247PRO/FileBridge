@@ -148,7 +148,7 @@
         }
     }
 
-    // Folder browser
+    // Folder browser. target: input to fill (null = read-only explore).
     async function browse(endpointId, path, target, title) {
         const status = h('div', { class: 'd-flex align-items-center gap-3 p-3' },
             h('div', { class: 'spinner-border spinner-border-sm text-primary', role: 'status' }),
@@ -292,6 +292,7 @@
             return;
         }
 
+        // Client-side quick filter tabs on tables
         const filterTab = e.target.closest('[data-fb-filter-tab]');
         if (filterTab) {
             const targetTableId = filterTab.dataset.fbFilterTarget;
@@ -314,17 +315,20 @@
         }
     });
 
+    // Model binding needs contiguous indexes: FolderMaps[0], [1], ...
     function reindex(container) {
         Array.from(container.children).forEach((row, i) => {
             row.querySelectorAll('[name]').forEach(el => el.name = el.name.replace(/\[\d+\]/, '[' + i + ']'));
         });
     }
 
+    // Forms and links that need a confirmation.
     document.addEventListener('submit', e => {
         const c = e.target.closest('[data-fb-confirm]');
         if (c && !confirm(c.dataset.fbConfirm)) e.preventDefault();
     });
 
+    // data-show-if="Field=1,2" shows an element only when the named select has one of those values.
     function applyShowIf() {
         document.querySelectorAll('[data-show-if]').forEach(el => {
             const [field, values] = el.dataset.showIf.split('=');

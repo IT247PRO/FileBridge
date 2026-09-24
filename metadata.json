@@ -1,0 +1,8 @@
+{
+  "name": "FileBridge",
+  "description": "Enterprise file transfer bridge service with jobs, history, quarantine, endpoints, and approval workflows.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

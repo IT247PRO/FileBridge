@@ -1,0 +1,265 @@
+<%- include('partials/header') %>
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <h1>Operational Dashboard</h1>
+        <p class="fb-page-subtitle">Real-time cluster telemetry, file transfer health, and worker node status.</p>
+    </div>
+    <div class="fb-page-actions">
+        <a href="/Jobs/Create" class="btn-fb primary">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>New Transfer Job</span>
+        </a>
+        <a href="/Endpoints" class="btn-fb secondary">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span>Test Endpoints</span>
+        </a>
+    </div>
+</div>
+
+<!-- AirFlow KPI Stat Grid -->
+<div class="fb-kpi-grid">
+    <div class="fb-kpi-card">
+        <div class="fb-kpi-header">
+            <span class="fb-kpi-label">Succeeded Today</span>
+            <div class="fb-kpi-icon-wrap ok">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+        </div>
+        <div class="fb-kpi-value"><%= vm.succeededToday %></div>
+        <div class="fb-kpi-subtext">
+            <span class="fb-badge ok" style="padding: 1px 6px; font-size: 10px;">Delivered</span>
+            <span>Files completed</span>
+        </div>
+    </div>
+
+    <div class="fb-kpi-card">
+        <div class="fb-kpi-header">
+            <span class="fb-kpi-label">Failed Today</span>
+            <div class="fb-kpi-icon-wrap <%= vm.failedToday > 0 ? 'fail' : 'ok' %>">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </div>
+        </div>
+        <div class="fb-kpi-value <%= vm.failedToday > 0 ? 'text-danger' : '' %>"><%= vm.failedToday %></div>
+        <div class="fb-kpi-subtext">
+            <% if (vm.failedToday > 0) { %>
+                <span class="fb-badge fail" style="padding: 1px 6px; font-size: 10px;">Requires Triage</span>
+            <% } else { %>
+                <span class="fb-badge ok" style="padding: 1px 6px; font-size: 10px;">Clean</span>
+            <% } %>
+            <span>Zero critical breaches</span>
+        </div>
+    </div>
+
+    <div class="fb-kpi-card">
+        <div class="fb-kpi-header">
+            <span class="fb-kpi-label">Active Transits</span>
+            <div class="fb-kpi-icon-wrap">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+            </div>
+        </div>
+        <div class="fb-kpi-value"><%= vm.inProgress %></div>
+        <div class="fb-kpi-subtext">
+            <span>In worker pipelines</span>
+        </div>
+    </div>
+
+    <div class="fb-kpi-card">
+        <div class="fb-kpi-header">
+            <span class="fb-kpi-label">Volume Today</span>
+            <div class="fb-kpi-icon-wrap ok">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+            </div>
+        </div>
+        <div class="fb-kpi-value"><%= Math.round(vm.bytesToday / 1024 / 1024) %> <span style="font-size: 14px; font-weight: 500; color: var(--fb-text-muted);">MB</span></div>
+        <div class="fb-kpi-subtext">
+            <span>Verified transfer payload</span>
+        </div>
+    </div>
+
+    <div class="fb-kpi-card">
+        <div class="fb-kpi-header">
+            <span class="fb-kpi-label">Quarantine</span>
+            <div class="fb-kpi-icon-wrap <%= vm.heldQuarantine > 0 ? 'quarantine' : 'ok' %>">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+        </div>
+        <div class="fb-kpi-value"><%= vm.heldQuarantine %></div>
+        <div class="fb-kpi-subtext">
+            <% if (vm.heldQuarantine > 0) { %>
+                <a href="/Quarantine" class="fb-textlink" style="font-size: 11px;">Review held files &rarr;</a>
+            <% } else { %>
+                <span>No files in holding</span>
+            <% } %>
+        </div>
+    </div>
+
+    <div class="fb-kpi-card">
+        <div class="fb-kpi-header">
+            <span class="fb-kpi-label">Pending Approvals</span>
+            <div class="fb-kpi-icon-wrap <%= vm.pendingApprovals > 0 ? 'warn' : 'ok' %>">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+        </div>
+        <div class="fb-kpi-value"><%= vm.pendingApprovals %></div>
+        <div class="fb-kpi-subtext">
+            <% if (vm.pendingApprovals > 0) { %>
+                <a href="/Approvals" class="fb-textlink" style="font-size: 11px;">Four-eyes review queue &rarr;</a>
+            <% } else { %>
+                <span>All changes committed</span>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<!-- Emergency Cluster Kill Switch -->
+<div class="fb-killswitch-card <%= vm.killSwitchOn ? 'active' : '' %>">
+    <div class="fb-killswitch-info">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h3>Cluster Emergency Kill Switch</h3>
+            <% if (vm.killSwitchOn) { %>
+                <span class="fb-badge fail">ACTIVE — ALL TRANSFERS SUSPENDED</span>
+            <% } else { %>
+                <span class="fb-badge ok">DISARMED — OPERATIONAL</span>
+            <% } %>
+        </div>
+        <p>When engaged, Worker daemons skip all scheduled triggers and manual pipeline executions cluster-wide. Use only for emergency isolation or critical storage maintenance.</p>
+    </div>
+    <form method="post" action="/Home/ToggleKillSwitch" data-fb-confirm="<%= vm.killSwitchOn ? 'Re-enable scheduled cluster processing?' : 'WARNING: Engaging the kill switch immediately halts all file transfer pipelines. Continue?' %>">
+        <button type="submit" class="btn-fb <%= vm.killSwitchOn ? 'primary' : 'danger' %>">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+            <span><%= vm.killSwitchOn ? 'Resume Cluster Execution' : 'Engage Kill Switch' %></span>
+        </button>
+    </form>
+</div>
+
+<!-- Two-Column Operational Views -->
+<div class="row g-4">
+    <!-- Active Cluster Worker Nodes -->
+    <div class="col-lg-6">
+        <div class="fb-card h-100">
+            <div class="fb-card-header">
+                <div>
+                    <h2 class="fb-card-title">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                        </svg>
+                        <span>Cluster Nodes</span>
+                    </h2>
+                    <p class="fb-card-desc">Active daemon instances reporting periodic heartbeats.</p>
+                </div>
+            </div>
+            <% if (!vm.nodes || vm.nodes.length === 0) { %>
+                <div class="fb-empty">No active worker node heartbeats recorded.</div>
+            <% } else { %>
+                <div class="fb-table-container mb-0 border-0 shadow-none">
+                    <table class="fb-table">
+                        <thead>
+                            <tr>
+                                <th>Host / Node</th>
+                                <th>Role</th>
+                                <th>Last Seen (UTC)</th>
+                                <th>Health</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% vm.nodes.forEach(function(n) { 
+                                var diffMs = Date.now() - new Date(n.lastSeenUtc).getTime();
+                                var stale = diffMs > 120000;
+                            %>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="fb-pulse-dot <%= stale ? 'pulse-fail' : '' %>"></span>
+                                            <span class="fb-mono fw-semibold"><%= n.nodeName %></span>
+                                        </div>
+                                    </td>
+                                    <td><span class="fb-proto-tag"><%= n.nodeRole %></span></td>
+                                    <td class="fb-mono text-muted small"><%= new Date(n.lastSeenUtc).toISOString().replace('T', ' ').substring(0, 19) %></td>
+                                    <td>
+                                        <span class="fb-badge <%= stale ? 'warn' : 'ok' %>">
+                                            <%= stale ? 'Stale Heartbeat' : 'Healthy' %>
+                                        </span>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Jobs With Failures Today -->
+    <div class="col-lg-6">
+        <div class="fb-card h-100">
+            <div class="fb-card-header">
+                <div>
+                    <h2 class="fb-card-title">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Jobs with Failures Today</span>
+                    </h2>
+                    <p class="fb-card-desc">Transfer jobs requiring operator attention or remediation.</p>
+                </div>
+                <a href="/History" class="fb-textlink small">All History &rarr;</a>
+            </div>
+            <% if (!vm.recentFailingJobs || vm.recentFailingJobs.length === 0) { %>
+                <div class="fb-empty">
+                    <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-success mb-2">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>All scheduled and manual jobs ran without errors today.</div>
+                </div>
+            <% } else { %>
+                <div class="fb-table-container mb-0 border-0 shadow-none">
+                    <table class="fb-table">
+                        <thead>
+                            <tr>
+                                <th>Job Name</th>
+                                <th>Failed Transfers</th>
+                                <th>Latest Failure (UTC)</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% vm.recentFailingJobs.forEach(function(j) { %>
+                                <tr>
+                                    <td class="fw-semibold text-main"><%= j.jobName %></td>
+                                    <td><span class="fb-badge fail"><%= j.failed %> failure(s)</span></td>
+                                    <td class="fb-mono text-muted small"><%= new Date(j.lastFailureUtc).toISOString().replace('T', ' ').substring(0, 19) %></td>
+                                    <td>
+                                        <a href="/History?jobId=<%= j.jobId %>" class="btn-fb secondary sm">
+                                            <span>Inspect</span>
+                                        </a>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

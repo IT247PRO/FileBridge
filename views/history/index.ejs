@@ -1,0 +1,134 @@
+<%- include('../partials/header') %>
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <h1>Transfer History</h1>
+        <p class="fb-page-subtitle">Immutable audit log of all file transfer attempts, payload sizes, durations, and node executions.</p>
+    </div>
+    <div class="fb-page-actions">
+        <a class="btn-fb secondary" href="/History/ExportCsv?jobId=<%= selectedJobId || '' %>&status=<%= selectedStatus || '' %>">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span>Export CSV</span>
+        </a>
+    </div>
+</div>
+
+<!-- Modern Filter Bar -->
+<div class="fb-card mb-4 p-3">
+    <form method="get" action="/History" class="fb-form d-flex align-items-end gap-3 flex-wrap">
+        <div style="min-width: 220px; flex: 1;">
+            <label>Transfer Job</label>
+            <select name="jobId">
+                <option value="">All Jobs</option>
+                <% jobs.forEach(function(j) { %>
+                    <option value="<%= j.id %>" <%= selectedJobId == j.id ? 'selected' : '' %>><%= j.name %></option>
+                <% }); %>
+            </select>
+        </div>
+
+        <div style="min-width: 180px;">
+            <label>Execution Status</label>
+            <select name="status">
+                <option value="">All Statuses</option>
+                <option value="Succeeded" <%= selectedStatus === 'Succeeded' ? 'selected' : '' %>>Succeeded</option>
+                <option value="Failed" <%= selectedStatus === 'Failed' ? 'selected' : '' %>>Failed</option>
+                <option value="InProgress" <%= selectedStatus === 'InProgress' ? 'selected' : '' %>>InProgress</option>
+                <option value="Quarantined" <%= selectedStatus === 'Quarantined' ? 'selected' : '' %>>Quarantined</option>
+                <option value="Skipped" <%= selectedStatus === 'Skipped' ? 'selected' : '' %>>Skipped</option>
+            </select>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <button type="submit" class="btn-fb primary">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span>Filter Records</span>
+            </button>
+            <% if (selectedJobId || selectedStatus) { %>
+                <a href="/History" class="btn-fb secondary">Reset</a>
+            <% } %>
+        </div>
+    </form>
+</div>
+
+<div class="fb-table-container">
+    <table class="fb-table">
+        <thead>
+            <tr>
+                <th>Started (UTC)</th>
+                <th>Transfer Job</th>
+                <th>File Name</th>
+                <th>Status</th>
+                <th class="text-end">Payload Size</th>
+                <th class="text-end">Duration</th>
+                <th class="text-end">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        <% if (!histories || histories.length === 0) { %>
+            <tr>
+                <td colspan="7" class="fb-empty">
+                    <svg width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-muted mb-2">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>No transfer history matching filter criteria.</div>
+                </td>
+            </tr>
+        <% } else { %>
+            <% histories.forEach(function(h) { 
+                var badgeClass = 'muted';
+                if (h.transferStatusId === 'Succeeded') badgeClass = 'ok';
+                else if (h.transferStatusId === 'Failed') badgeClass = 'fail';
+                else if (h.transferStatusId === 'Quarantined') badgeClass = 'quarantine';
+                else if (h.transferStatusId === 'InProgress') badgeClass = 'warn';
+
+                var sizeKb = Math.round(h.sizeBytes / 1024);
+                var sizeText = sizeKb >= 1024 ? (sizeKb / 1024).toFixed(1) + ' MB' : sizeKb + ' KB';
+            %>
+                <tr>
+                    <td class="fb-mono text-muted small">
+                        <%= new Date(h.startedUtc).toISOString().replace('T', ' ').substring(0, 19) %>
+                    </td>
+                    <td class="fw-semibold text-main">
+                        <%= h.jobName %>
+                    </td>
+                    <td>
+                        <a class="fb-textlink fb-mono small" href="/History/Details/<%= h.id %>">
+                            <%= h.fileName %>
+                        </a>
+                    </td>
+                    <td>
+                        <span class="fb-badge <%= badgeClass %>"><%= h.transferStatusId %></span>
+                    </td>
+                    <td class="text-end fb-mono small">
+                        <%= sizeText %>
+                    </td>
+                    <td class="text-end fb-mono small">
+                        <%= h.durationMs ? h.durationMs.toLocaleString() + ' ms' : '-' %>
+                    </td>
+                    <td class="text-end">
+                        <a href="/History/Details/<%= h.id %>" class="btn-fb secondary sm">Details</a>
+                    </td>
+                </tr>
+            <% }); %>
+        <% } %>
+        </tbody>
+    </table>
+
+    <div class="fb-table-footer d-flex align-items-center justify-content-between p-3 border-top bg-light">
+        <span class="text-muted small">Showing <%= histories ? histories.length : 0 %> of <%= total %> records (Page <%= page %>)</span>
+        <div class="d-flex gap-2">
+            <% if (page > 1) { %>
+                <a href="/History?jobId=<%= selectedJobId || '' %>&status=<%= selectedStatus || '' %>&page=<%= page - 1 %>" class="btn-fb secondary sm">&larr; Previous</a>
+            <% } %>
+            <% if (total > page * 50) { %>
+                <a href="/History?jobId=<%= selectedJobId || '' %>&status=<%= selectedStatus || '' %>&page=<%= page + 1 %>" class="btn-fb secondary sm">Next &rarr;</a>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,70 @@
+<%- include('../partials/header') %>
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h1>Configuration Snapshots</h1>
+            <span class="fb-badge info"><%= jobName %></span>
+        </div>
+        <p class="fb-page-subtitle">Historical audit trail of all saved configurations with one-click atomic rollback.</p>
+    </div>
+    <div class="fb-page-actions">
+        <a class="btn-fb secondary" href="/Jobs/Edit/<%= jobId %>">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Back to Job Editor</span>
+        </a>
+    </div>
+</div>
+
+<div class="fb-table-container">
+    <table class="fb-table">
+        <thead>
+            <tr>
+                <th>Snapshot Version</th>
+                <th>Committed Date (UTC)</th>
+                <th>Author / Submitter</th>
+                <th class="text-end">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        <% if (!versions || versions.length === 0) { %>
+            <tr>
+                <td colspan="4" class="fb-empty">No previous configuration snapshots found for this job.</td>
+            </tr>
+        <% } else { %>
+            <% versions.forEach(function(v) { %>
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fb-badge ok">v<%= v.version %></span>
+                            <span class="fw-semibold text-main">Snapshot #<%= v.id %></span>
+                        </div>
+                    </td>
+                    <td class="fb-mono text-muted small">
+                        <%= new Date(v.createdUtc).toISOString().replace('T', ' ').substring(0, 19) %>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fb-mono small"><%= v.createdBy %></span>
+                        </div>
+                    </td>
+                    <td class="text-end">
+                        <form method="post" action="/Jobs/Rollback/<%= jobId %>/<%= v.version %>" class="d-inline" data-fb-confirm="Are you sure you want to rollback to configuration version v<%= v.version %>? This will overwrite the current live settings.">
+                            <button type="submit" class="btn-fb secondary sm">
+                                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                </svg>
+                                <span>Rollback to v<%= v.version %></span>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            <% }); %>
+        <% } %>
+        </tbody>
+    </table>
+</div>
+
+<%- include('../partials/footer') %>

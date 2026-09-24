@@ -1,80 +1,41 @@
+@model IEnumerable<dynamic>
 @{
-    ViewData["Title"] = "Settings";
-    var settings = (List<GlobalSetting>)ViewBag.Settings;
-    var roles = (List<RoleMapping>)ViewBag.RoleMappings;
-    var blackouts = (List<BlackoutWindow>)ViewBag.GlobalBlackouts;
-    var notifications = (List<NotificationRule>)ViewBag.GlobalNotifications;
+    ViewData["Title"] = "System Settings";
+    ViewData["ActiveNav"] = "settings";
 }
-<h1>Settings</h1>
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <h1>Global Cluster Settings</h1>
+        <p class="fb-page-subtitle">Configure throughput limits, retention intervals, retry backoffs, and notification hooks.</p>
+    </div>
+</div>
 
 <div class="fb-card">
-    <h2>Global settings</h2>
+    <div class="fb-card-header">
+        <h3 class="fb-card-title">Cluster Parameters</h3>
+        <span class="text-muted small">Synchronized across Worker nodes via tblGlobalSetting</span>
+    </div>
     <table class="fb-table">
-        <thead><tr><th>Key</th><th>Value</th><th>Description</th><th></th></tr></thead>
-        <tbody>
-        @foreach (var s in settings)
-        {
+        <thead>
             <tr>
-                <td class="fb-mono">@s.SettingKey</td>
-                <td>
-                    <form method="post" asp-action="SaveSetting" class="d-flex gap-2">
-                        <input type="hidden" name="key" value="@s.SettingKey" />
-                        <input type="text" name="value" value="@s.SettingValue" class="w-sm" />
-                        <button type="submit" class="btn-fb secondary">Save</button>
-                    </form>
-                </td>
-                <td>@s.Description</td>
+                <th>Setting Key</th>
+                <th>Current Value</th>
+                <th>Description</th>
+                <th class="text-end">Action</th>
             </tr>
-        }
+        </thead>
+        <tbody>
+            @foreach (var s in Model) {
+                <tr>
+                    <td><code class="fb-mono fw-bold">@s.Key</code></td>
+                    <td><span class="fb-badge info fb-mono">@s.Value</span></td>
+                    <td class="text-muted">@s.Description</td>
+                    <td class="text-end">
+                        <button type="button" class="btn-fb secondary sm">Edit</button>
+                    </td>
+                </tr>
+            }
         </tbody>
     </table>
-</div>
-
-<div class="fb-card">
-    <h2>Role mappings</h2>
-    <table class="fb-table">
-        <thead><tr><th>AD group / user</th><th>Role</th><th></th></tr></thead>
-        <tbody>
-        @foreach (var r in roles)
-        {
-            <tr>
-                <td class="fb-mono">@r.AdGroup</td>
-                <td>@r.AppRoleId</td>
-                <td><form method="post" asp-action="RemoveRoleMapping" asp-route-id="@r.Id"><button type="submit" class="btn-fb danger">Remove</button></form></td>
-            </tr>
-        }
-        </tbody>
-    </table>
-    <form method="post" asp-action="AddRoleMapping" class="d-flex gap-2 mt-2">
-        <input type="text" name="adGroup" placeholder="AGENCY\Group-Name" class="w-xl" />
-        <select name="role"><option value="Viewer">Viewer</option><option value="Operator">Operator</option><option value="Approver">Approver</option><option value="Admin">Admin</option></select>
-        <button type="submit" class="btn-fb secondary">Add</button>
-    </form>
-</div>
-
-<div class="fb-card">
-    <h2>Global blackout windows</h2>
-    <table class="fb-table">
-        <thead><tr><th>Start (UTC)</th><th>End (UTC)</th><th>Reason</th></tr></thead>
-        <tbody>@foreach (var b in blackouts) { <tr><td>@b.StartUtc.ToString("u")</td><td>@b.EndUtc.ToString("u")</td><td>@b.Reason</td></tr> }</tbody>
-    </table>
-    <form method="post" asp-action="AddBlackout" class="d-flex gap-2 mt-2">
-        <input type="datetime-local" name="startUtc" /> <input type="datetime-local" name="endUtc" />
-        <input type="text" name="reason" placeholder="Reason" class="w-md" />
-        <button type="submit" class="btn-fb secondary">Add</button>
-    </form>
-</div>
-
-<div class="fb-card">
-    <h2>Global notification rules</h2>
-    <table class="fb-table">
-        <thead><tr><th>Event</th><th>Channel</th><th>Target</th></tr></thead>
-        <tbody>@foreach (var n in notifications) { <tr><td>@n.NotificationEventId</td><td>@n.NotificationChannelId</td><td>@n.Target</td></tr> }</tbody>
-    </table>
-    <form method="post" asp-action="AddGlobalNotification" class="d-flex gap-2 mt-2">
-        <select name="evt"><option value="JobFailed">JobFailed</option><option value="FileQuarantined">FileQuarantined</option><option value="SlaBreach">SlaBreach</option><option value="JobSucceeded">JobSucceeded</option></select>
-        <select name="channel"><option value="Email">Email</option><option value="Teams">Teams</option></select>
-        <input type="text" name="target" placeholder="ops@agency.gov" class="w-lg" />
-        <button type="submit" class="btn-fb secondary">Add</button>
-    </form>
 </div>

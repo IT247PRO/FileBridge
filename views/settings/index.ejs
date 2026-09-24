@@ -1,0 +1,259 @@
+<%- include('../partials/header') %>
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <h1>System Settings &amp; Governance</h1>
+        <p class="fb-page-subtitle">Manage cluster runtime parameters, Active Directory role mappings, global blackout schedules, and system alerts.</p>
+    </div>
+</div>
+
+<!-- 1. Global Cluster Settings -->
+<div class="fb-card mb-4">
+    <div class="fb-card-header">
+        <div>
+            <h2 class="fb-card-title">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                </svg>
+                <span>Cluster Runtime Configuration</span>
+            </h2>
+            <p class="fb-card-desc">Low-level parameters governing timeouts, worker heartbeats, and cluster behavior.</p>
+        </div>
+    </div>
+
+    <div class="fb-table-container border-0 shadow-none mb-0">
+        <table class="fb-table">
+            <thead>
+                <tr>
+                    <th style="width: 250px;">Setting Key</th>
+                    <th>Configured Value</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+            <% settings.forEach(function(s) { %>
+                <tr>
+                    <td class="fb-mono fw-semibold text-main"><%= s.settingKey %></td>
+                    <td>
+                        <form method="post" action="/Settings/SaveSetting" class="d-flex align-items-center gap-2">
+                            <input type="hidden" name="key" value="<%= s.settingKey %>" />
+                            <input type="text" name="value" value="<%= s.settingValue %>" class="form-control form-control-sm fb-mono" style="max-width: 240px; height: 32px; font-size: 13px;" />
+                            <button type="submit" class="btn-fb secondary sm">
+                                <span>Save</span>
+                            </button>
+                        </form>
+                    </td>
+                    <td class="text-muted small"><%= s.description %></td>
+                </tr>
+            <% }); %>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 2. Role-Based Access Control (RBAC) -->
+<div class="fb-card mb-4">
+    <div class="fb-card-header">
+        <div>
+            <h2 class="fb-card-title">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <span>Active Directory Role Mappings</span>
+            </h2>
+            <p class="fb-card-desc">Map enterprise Windows / Active Directory security groups or users to FileBridge administrative roles.</p>
+        </div>
+    </div>
+
+    <div class="fb-table-container border-0 shadow-none mb-3">
+        <table class="fb-table">
+            <thead>
+                <tr>
+                    <th>AD Security Group / Principal</th>
+                    <th>Assigned Role</th>
+                    <th class="text-end">Revoke</th>
+                </tr>
+            </thead>
+            <tbody>
+            <% roles.forEach(function(r) { %>
+                <tr>
+                    <td class="fb-mono fw-semibold text-main"><%= r.adGroup %></td>
+                    <td>
+                        <% if (r.appRoleId === 'Admin') { %>
+                            <span class="fb-badge fail">Admin</span>
+                        <% } else if (r.appRoleId === 'Approver') { %>
+                            <span class="fb-badge warn">Approver</span>
+                        <% } else if (r.appRoleId === 'Operator') { %>
+                            <span class="fb-badge ok">Operator</span>
+                        <% } else { %>
+                            <span class="fb-badge muted">Viewer</span>
+                        <% } %>
+                    </td>
+                    <td class="text-end">
+                        <form method="post" action="/Settings/RemoveRoleMapping/<%= r.id %>" class="d-inline" data-fb-confirm="Revoke role mapping for <%= r.adGroup %>?">
+                            <button type="submit" class="btn-fb danger sm">Revoke</button>
+                        </form>
+                    </td>
+                </tr>
+            <% }); %>
+            </tbody>
+        </table>
+    </div>
+
+    <form method="post" action="/Settings/AddRoleMapping" class="d-flex align-items-center gap-2 p-3 bg-light rounded border flex-wrap">
+        <input type="text" name="adGroup" placeholder="AGENCY\SecGroup or DOMAIN\username" class="form-control form-control-sm fb-mono" style="min-width: 280px; height: 32px; font-size: 13px;" required />
+        <select name="role" class="form-select form-select-sm" style="width: 140px; height: 32px; font-size: 13px;">
+            <option value="Viewer">Viewer</option>
+            <option value="Operator">Operator</option>
+            <option value="Approver">Approver</option>
+            <option value="Admin">Admin</option>
+        </select>
+        <button type="submit" class="btn-fb primary sm">
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Assign Mapping</span>
+        </button>
+    </form>
+</div>
+
+<!-- 3. Global Blackout Windows & 4. Global Alerts -->
+<div class="row g-4">
+    <!-- Global Blackouts -->
+    <div class="col-lg-6">
+        <div class="fb-card h-100">
+            <div class="fb-card-header">
+                <div>
+                    <h2 class="fb-card-title">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                        <span>Cluster Blackout Windows</span>
+                    </h2>
+                    <p class="fb-card-desc">Scheduled maintenance periods when all job executions are suppressed.</p>
+                </div>
+            </div>
+
+            <div class="fb-table-container border-0 shadow-none mb-3">
+                <table class="fb-table">
+                    <thead>
+                        <tr>
+                            <th>Start (UTC)</th>
+                            <th>End (UTC)</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <% if (!blackouts || blackouts.length === 0) { %>
+                        <tr>
+                            <td colspan="3" class="fb-empty">No active blackout windows scheduled.</td>
+                        </tr>
+                    <% } else { %>
+                        <% blackouts.forEach(function(b) { %>
+                            <tr>
+                                <td class="fb-mono small"><%= new Date(b.startUtc).toISOString().replace('T', ' ').substring(0, 16) %></td>
+                                <td class="fb-mono small"><%= new Date(b.endUtc).toISOString().replace('T', ' ').substring(0, 16) %></td>
+                                <td class="small text-muted"><%= b.reason || 'Scheduled Maintenance' %></td>
+                            </tr>
+                        <% }); %>
+                    <% } %>
+                    </tbody>
+                </table>
+            </div>
+
+            <form method="post" action="/Settings/AddBlackout" class="d-flex flex-column gap-2 p-3 bg-light rounded border">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="small text-muted mb-1">Start (UTC)</label>
+                        <input type="datetime-local" name="startUtc" class="form-control form-control-sm" required />
+                    </div>
+                    <div class="col-6">
+                        <label class="small text-muted mb-1">End (UTC)</label>
+                        <input type="datetime-local" name="endUtc" class="form-control form-control-sm" required />
+                    </div>
+                </div>
+                <div>
+                    <input type="text" name="reason" placeholder="Reason (e.g. SAN Storage Maintenance)" class="form-control form-control-sm" />
+                </div>
+                <button type="submit" class="btn-fb secondary sm align-self-start mt-1">
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Schedule Blackout</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Global Notification Rules -->
+    <div class="col-lg-6">
+        <div class="fb-card h-100">
+            <div class="fb-card-header">
+                <div>
+                    <h2 class="fb-card-title">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        <span>Global Alert Broadcasts</span>
+                    </h2>
+                    <p class="fb-card-desc">Cluster-wide alerts dispatched regardless of individual job settings.</p>
+                </div>
+            </div>
+
+            <div class="fb-table-container border-0 shadow-none mb-3">
+                <table class="fb-table">
+                    <thead>
+                        <tr>
+                            <th>Trigger Event</th>
+                            <th>Channel</th>
+                            <th>Target Destination</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <% if (!notifications || notifications.length === 0) { %>
+                        <tr>
+                            <td colspan="3" class="fb-empty">No global notification channels configured.</td>
+                        </tr>
+                    <% } else { %>
+                        <% notifications.forEach(function(n) { %>
+                            <tr>
+                                <td><span class="fb-badge fail"><%= n.notificationEventId %></span></td>
+                                <td><span class="fb-proto-tag"><%= n.notificationChannelId %></span></td>
+                                <td class="fb-mono small text-break"><%= n.target %></td>
+                            </tr>
+                        <% }); %>
+                    <% } %>
+                    </tbody>
+                </table>
+            </div>
+
+            <form method="post" action="/Settings/AddGlobalNotification" class="d-flex flex-column gap-2 p-3 bg-light rounded border">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <select name="evt" class="form-select form-select-sm">
+                            <option value="JobFailed">Job Execution Failed</option>
+                            <option value="FileQuarantined">File Quarantined</option>
+                            <option value="SlaBreach">SLA Delivery Breached</option>
+                            <option value="JobSucceeded">Job Succeeded</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <select name="channel" class="form-select form-select-sm">
+                            <option value="Email">SMTP Email</option>
+                            <option value="Teams">Microsoft Teams</option>
+                        </select>
+                    </div>
+                </div>
+                <input type="text" name="target" placeholder="Recipient address or Webhook URL" class="form-control form-control-sm" required />
+                <button type="submit" class="btn-fb secondary sm align-self-start mt-1">
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Add Global Alert</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<%- include('../partials/footer') %>

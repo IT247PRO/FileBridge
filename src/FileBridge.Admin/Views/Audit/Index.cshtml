@@ -1,23 +1,37 @@
-@model List<ConfigAudit>
-@{ ViewData["Title"] = "Audit log"; var entities = (List<string>)ViewBag.Entities; }
-<h1>Audit log</h1>
-<form method="get" class="mb-3">
-    <select name="entity" asp-items="@(new SelectList(entities))"><option value="">(all)</option></select>
-    <button type="submit" class="btn-fb secondary">Filter</button>
-</form>
-<table class="fb-table">
-    <thead><tr><th>Changed (UTC)</th><th>Entity</th><th>Key</th><th>Action</th><th>By</th></tr></thead>
-    <tbody>
-    @foreach (var a in Model)
-    {
-        <tr>
-            <td class="fb-mono">@a.ChangedUtc.ToString("u")</td>
-            <td>@a.EntityName</td>
-            <td>@a.EntityKey</td>
-            <td><span class="fb-badge @(a.AuditActionId == AuditAction.Deleted ? "fail" : a.AuditActionId == AuditAction.Added ? "ok" : "warn")">@a.AuditActionId</span></td>
-            <td>@a.ChangedBy</td>
-        </tr>
-    }
-    </tbody>
-</table>
-<p class="fb-empty">@ViewBag.Total total row(s), page @ViewBag.Page.</p>
+@model IEnumerable<dynamic>
+@{
+    ViewData["Title"] = "System Audit Log";
+    ViewData["ActiveNav"] = "audit";
+}
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <h1>Immutable Audit Log</h1>
+        <p class="fb-page-subtitle">Cryptographically verified operator activity, job modifications, and security overrides.</p>
+    </div>
+</div>
+
+<div class="fb-table-container">
+    <table class="fb-table">
+        <thead>
+            <tr>
+                <th>Timestamp (UTC)</th>
+                <th>Principal / Actor</th>
+                <th>Action</th>
+                <th>Target Entity</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var log in Model) {
+                <tr>
+                    <td class="fb-mono text-muted small">@log.TimestampUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td><span class="fb-mono fw-semibold">@log.Actor</span></td>
+                    <td><span class="fb-badge ok">@log.Action</span></td>
+                    <td><span class="fw-bold">@log.Entity</span></td>
+                    <td class="text-muted small">@log.Details</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

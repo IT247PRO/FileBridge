@@ -1,246 +1,215 @@
-@model JobEditModel
+@model FileBridge.Admin.Models.JobEditModel
 @{
-    ViewData["Title"] = Model.Id == 0 ? "Add job" : "Edit job";
-    var endpoints = (List<Endpoint>)ViewBag.Endpoints;
-    var profiles = (List<EncryptionProfile>)ViewBag.EncryptionProfiles;
-}
-<h1>@ViewData["Title"]</h1>
-
-@if (!ViewData.ModelState.IsValid)
-{
-    <div class="fb-card card-fail">
-        <ul class="m-0 ps-3">
-            @foreach (var e in ViewData.ModelState.SelectMany(kv => kv.Value!.Errors)) { <li>@e.ErrorMessage</li> }
-        </ul>
-    </div>
+    ViewData["Title"] = Model.Id > 0 ? "Edit Transfer Job" : "Create Transfer Job";
+    ViewData["ActiveNav"] = "jobs";
+    var endpoints = (IEnumerable<dynamic>)(ViewData["Endpoints"] ?? Enumerable.Empty<dynamic>());
+    var encryptionProfiles = (IEnumerable<dynamic>)(ViewData["EncryptionProfiles"] ?? Enumerable.Empty<dynamic>());
 }
 
-<form method="post" asp-action="Save" class="fb-form" id="job-form">
-<input type="hidden" asp-for="Id" /><input type="hidden" asp-for="Version" /><input type="hidden" asp-for="RowVersion" />
-
-<ul class="nav nav-tabs" role="tablist">
-    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#t-general" type="button">General</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-schedule" type="button">Schedule</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-folders" type="button">Folders &amp; filters</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-processing" type="button">Processing</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-semaphore" type="button">Semaphore &amp; post-action</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-notify" type="button">Notifications &amp; SLA</button></li>
-</ul>
-
-<div class="tab-content pt-3">
-
-<div class="tab-pane fade show active" id="t-general">
-    <div class="row">
-        <div><label>Name</label><input asp-for="Name" /></div>
-        <div><label>Direction</label><select asp-for="TransferDirectionId" asp-items="Html.GetEnumSelectList<TransferDirection>()"></select></div>
-    </div>
-    <div><label>Description</label><textarea asp-for="Description" rows="2"></textarea></div>
-    <div class="row">
-        <div><label>Source endpoint</label>
-            <select asp-for="SourceEndpointId" asp-items="@(new SelectList(endpoints, "Id", "Name"))"></select>
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h1>@(Model.Id > 0 ? "Edit Transfer Job" : "Create Transfer Job")</h1>
+            @if (Model.Id > 0) {
+                <span class="fb-badge @(Model.IsEnabled ? (Model.IsPaused ? "warn" : "ok") : "muted")">
+                    @(Model.IsEnabled ? (Model.IsPaused ? "Paused" : "Active") : "Disabled")
+                </span>
+            }
         </div>
-        <div><label>Destination endpoint</label>
-            <select asp-for="DestinationEndpointId" asp-items="@(new SelectList(endpoints, "Id", "Name"))"></select>
-        </div>
+        <p class="fb-page-subtitle">Configure Quartz scheduling, folder path mappings, crypto filters, and delivery SLAs.</p>
     </div>
-    <div class="checkline"><input asp-for="IsEnabled" type="checkbox" /><label asp-for="IsEnabled">Enabled</label></div>
-    <div class="checkline"><input asp-for="IsPaused" type="checkbox" /><label asp-for="IsPaused">Paused</label></div>
-</div>
-
-<div class="tab-pane fade" id="t-schedule">
-    <div class="row">
-        <div><label>Schedule type</label><select asp-for="ScheduleTypeId" asp-items="Html.GetEnumSelectList<ScheduleType>()"></select></div>
-        <div><label>Time zone</label>
-            <select asp-for="TimeZoneId">
-                @foreach (var tz in (IEnumerable<TimeZoneInfo>)ViewBag.TimeZones)
-                {
-                    <option value="@tz.Id" selected="@(tz.Id == Model.TimeZoneId)">@tz.DisplayName</option>
-                }
-            </select>
-        </div>
-    </div>
-    <div class="row">
-        <div><label>Cron expression (with seconds)</label><input asp-for="CronExpression" placeholder="0 0/5 * * * ?" class="fb-mono" /></div>
-        <div><label>Interval (seconds)</label><input asp-for="IntervalSeconds" type="number" /></div>
-    </div>
-    <div class="row">
-        <div><label>Active from</label><input asp-for="ActiveFromTime" type="time" /></div>
-        <div><label>Active to</label><input asp-for="ActiveToTime" type="time" /></div>
-    </div>
-    <label>Active days</label>
-    <div class="row">
-        @foreach (var d in Enum.GetValues<DayOfWeek>())
-        {
-            <div class="checkline"><input type="checkbox" name="ActiveDays" value="@d" checked="@Model.ActiveDays.Contains(d)" /><label>@d.ToString()[..3]</label></div>
+    <div class="fb-page-actions">
+        @if (Model.Id > 0) {
+            <button type="button" class="btn-fb secondary" data-fb-action="post-poll" data-fb-url="/Jobs/DryRun/@Model.Id" data-fb-render="dryrun" data-fb-title="Dry Run: @Model.Name">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <span>Dry Run</span>
+            </button>
+            <button type="button" class="btn-fb primary" data-fb-action="post-poll" data-fb-url="/Jobs/RunNow/@Model.Id" data-fb-render="message" data-fb-title="Run Now: @Model.Name" data-fb-confirm="Trigger transfer execution immediately for @Model.Name?">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Run Now</span>
+            </button>
+            <a class="btn-fb secondary" href="/Jobs/Versions/@Model.Id">Snapshots</a>
+            <a class="btn-fb secondary" href="/Jobs/Export/@Model.Id">Export</a>
         }
+        <a class="btn-fb secondary" href="/Jobs">Back to List</a>
     </div>
 </div>
 
-<div class="tab-pane fade" id="t-folders">
-    <h2>Folder maps</h2>
-    <div id="folderMaps">
-        @for (var i = 0; i < Model.FolderMaps.Count; i++)
-        {
-            <div class="fb-repeat-row">
-                <input type="hidden" name="FolderMaps[@i].Id" value="@Model.FolderMaps[i].Id" />
-                <div><label>Source path</label><input name="FolderMaps[@i].SourcePath" value="@Model.FolderMaps[i].SourcePath" /></div>
-                <div><label>Destination path</label><input name="FolderMaps[@i].DestinationPath" value="@Model.FolderMaps[i].DestinationPath" /></div>
-                <div class="checkline"><input type="checkbox" name="FolderMaps[@i].Recursive" @(Model.FolderMaps[i].Recursive ? "checked" : "") /><label>Recursive</label></div>
-                <div class="checkline"><input type="checkbox" name="FolderMaps[@i].PreserveSubfolders" @(Model.FolderMaps[i].PreserveSubfolders ? "checked" : "") /><label>Preserve subfolders</label></div>
-                <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
+<form method="post" action="/Jobs/Save" class="fb-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="Id" value="@Model.Id" />
+
+    <!-- 1. General & Routing -->
+    <div class="fb-card mb-4">
+        <h2 class="fb-card-title">General &amp; Routing</h2>
+        <p class="fb-card-desc">Identify the pipeline and choose the connected source and destination endpoints.</p>
+
+        <div class="row mb-3">
+            <div>
+                <label>Job Name <span class="text-danger">*</span></label>
+                <input name="Name" value="@Model.Name" required placeholder="e.g. Daily_Payroll_SFTP_Ingest" />
             </div>
-        }
-    </div>
-    <template id="folderMaps-template">
-        <div class="fb-repeat-row">
-            <input type="hidden" name="FolderMaps[0].Id" value="0" />
-            <div><label>Source path</label><input name="FolderMaps[0].SourcePath" /></div>
-            <div><label>Destination path</label><input name="FolderMaps[0].DestinationPath" /></div>
-            <div class="checkline"><input type="checkbox" name="FolderMaps[0].Recursive" /><label>Recursive</label></div>
-            <div class="checkline"><input type="checkbox" name="FolderMaps[0].PreserveSubfolders" /><label>Preserve subfolders</label></div>
-            <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
-        </div>
-    </template>
-    <button type="button" class="btn-fb secondary" data-fb-add-row="folderMaps">Add folder map</button>
-
-    <h2 class="mt-4">Filters</h2>
-    <div id="filters">
-        @for (var i = 0; i < Model.Filters.Count; i++)
-        {
-            <div class="fb-repeat-row">
-                <input type="hidden" name="Filters[@i].Id" value="@Model.Filters[i].Id" />
-                <div><label>Pattern</label><input name="Filters[@i].Pattern" value="@Model.Filters[i].Pattern" /></div>
-                <div class="checkline"><input type="checkbox" name="Filters[@i].IsRegex" @(Model.Filters[i].IsRegex ? "checked" : "") /><label>Regex</label></div>
-                <div class="checkline"><input type="checkbox" name="Filters[@i].IsExclude" @(Model.Filters[i].IsExclude ? "checked" : "") /><label>Exclude</label></div>
-                <div><label>Allowed types</label><input name="Filters[@i].AllowedFileTypes" value="@Model.Filters[i].AllowedFileTypes" placeholder="csv,text,pdf" /></div>
-                <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
+            <div>
+                <label>Operational Description</label>
+                <input name="Description" value="@Model.Description" placeholder="Purpose, owner, ticket ID, or escalation path..." />
             </div>
-        }
-    </div>
-    <template id="filters-template">
-        <div class="fb-repeat-row">
-            <input type="hidden" name="Filters[0].Id" value="0" />
-            <div><label>Pattern</label><input name="Filters[0].Pattern" value="*" /></div>
-            <div class="checkline"><input type="checkbox" name="Filters[0].IsRegex" /><label>Regex</label></div>
-            <div class="checkline"><input type="checkbox" name="Filters[0].IsExclude" /><label>Exclude</label></div>
-            <div><label>Allowed types</label><input name="Filters[0].AllowedFileTypes" placeholder="csv,text,pdf" /></div>
-            <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
         </div>
-    </template>
-    <button type="button" class="btn-fb secondary" data-fb-add-row="filters">Add filter</button>
-</div>
 
-<div class="tab-pane fade" id="t-processing">
-    <div class="row">
-        <div><label>Stability window (seconds)</label><input asp-for="StabilitySeconds" type="number" /></div>
-        <div><label>Max parallel files</label><input asp-for="MaxParallelFiles" type="number" /></div>
-    </div>
-    <div class="row">
-        <div><label>Max retries</label><input asp-for="MaxRetries" type="number" /></div>
-        <div><label>Retry base (seconds)</label><input asp-for="RetryBaseSeconds" type="number" /></div>
-    </div>
-    <div class="row">
-        <div><label>Duplicate policy</label><select asp-for="DuplicatePolicyId" asp-items="Html.GetEnumSelectList<DuplicatePolicy>()"></select></div>
-        <div><label>Compression</label><select asp-for="CompressionOperationId" asp-items="Html.GetEnumSelectList<CompressionOperation>()"></select></div>
-    </div>
-    <div><label>Encryption profile</label>
-        <select asp-for="EncryptionProfileId" asp-items="@(new SelectList(profiles, "Id", "Name"))"><option value="">(none)</option></select>
-    </div>
-    <div><label>Rename pattern</label><input asp-for="RenamePattern" placeholder="{name}_{date:yyyyMMdd}{ext}" class="fb-mono" /></div>
-    <div class="row">
-        <div class="checkline"><input asp-for="UseTempNameOnUpload" type="checkbox" /><label asp-for="UseTempNameOnUpload">Upload as temp name first</label></div>
-        <div class="checkline"><input asp-for="VerifyAfterUpload" type="checkbox" /><label asp-for="VerifyAfterUpload">Verify size after upload</label></div>
-    </div>
-    <div class="row">
-        <div class="checkline"><input asp-for="VirusScanEnabled" type="checkbox" /><label asp-for="VirusScanEnabled">Virus scan</label></div>
-        <div class="checkline"><input asp-for="UseFileWatcher" type="checkbox" /><label asp-for="UseFileWatcher">Low-latency file watcher (SMB/local only)</label></div>
-    </div>
-    <div class="row">
-        <div class="checkline"><input asp-for="GenerateChecksumManifest" type="checkbox" /><label asp-for="GenerateChecksumManifest">Write .sha256 manifest</label></div>
-        <div class="checkline"><input asp-for="ValidateChecksumManifest" type="checkbox" /><label asp-for="ValidateChecksumManifest">Require source .sha256 manifest</label></div>
-    </div>
-</div>
-
-<div class="tab-pane fade" id="t-semaphore">
-    <fieldset><legend>Semaphore</legend>
-        <div class="row">
-            <div><label>Mode</label><select asp-for="Semaphore.SemaphoreModeId" asp-items="Html.GetEnumSelectList<SemaphoreMode>()"></select></div>
-            <div><label>Trigger pattern</label><input name="Semaphore.TriggerPattern" value="@Model.Semaphore.TriggerPattern" /></div>
-        </div>
-        <div class="row">
-            <div class="checkline"><input type="checkbox" name="Semaphore.DeleteTriggerAfter" @(Model.Semaphore.DeleteTriggerAfter ? "checked" : "") /><label>Delete trigger after</label></div>
-            <div class="checkline"><input type="checkbox" name="Semaphore.TransferTrigger" @(Model.Semaphore.TransferTrigger ? "checked" : "") /><label>Write trigger at destination too</label></div>
-        </div>
-    </fieldset>
-    <fieldset><legend>Post-action</legend>
-        <div class="row">
-            <div><label>Action</label><select name="PostAction.PostActionTypeId" asp-items="Html.GetEnumSelectList<PostActionType>()"></select></div>
-            <div><label>Archive subfolder</label><input name="PostAction.ArchivePath" value="@Model.PostAction.ArchivePath" /></div>
-        </div>
-        <div><label>Rename pattern (Rename / Archive)</label><input name="PostAction.RenamePattern" value="@Model.PostAction.RenamePattern" placeholder="{name}_{date:yyyyMMddHHmmss}{ext}" class="fb-mono" /></div>
-    </fieldset>
-</div>
-
-<div class="tab-pane fade" id="t-notify">
-    <h2>Notifications</h2>
-    <div id="notifications">
-        @for (var i = 0; i < Model.Notifications.Count; i++)
-        {
-            <div class="fb-repeat-row">
-                <input type="hidden" name="Notifications[@i].Id" value="@Model.Notifications[i].Id" />
-                <div><label>Event</label><select name="Notifications[@i].NotificationEventId" asp-items="Html.GetEnumSelectList<NotificationEvent>()"></select></div>
-                <div><label>Channel</label><select name="Notifications[@i].NotificationChannelId" asp-items="Html.GetEnumSelectList<NotificationChannel>()"></select></div>
-                <div><label>Target</label><input name="Notifications[@i].Target" value="@Model.Notifications[i].Target" placeholder="ops@agency.gov or webhook URL" /></div>
-                <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
+        <div class="row mb-3">
+            <div>
+                <label>Source Connection Endpoint <span class="text-danger">*</span></label>
+                <select name="SourceEndpointId" id="srcEndpointSelect">
+                    @foreach (var e in endpoints) {
+                        <option value="@e.Id" selected="@(Model.SourceEndpointId == e.Id)">@e.Name</option>
+                    }
+                </select>
             </div>
-        }
-    </div>
-    <template id="notifications-template">
-        <div class="fb-repeat-row">
-            <input type="hidden" name="Notifications[0].Id" value="0" />
-            <div><label>Event</label><select name="Notifications[0].NotificationEventId"><option value="JobFailed">JobFailed</option><option value="FileQuarantined">FileQuarantined</option><option value="SlaBreach">SlaBreach</option><option value="JobSucceeded">JobSucceeded</option></select></div>
-            <div><label>Channel</label><select name="Notifications[0].NotificationChannelId"><option value="Email">Email</option><option value="Teams">Teams</option></select></div>
-            <div><label>Target</label><input name="Notifications[0].Target" placeholder="ops@agency.gov or webhook URL" /></div>
-            <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
-        </div>
-    </template>
-    <button type="button" class="btn-fb secondary" data-fb-add-row="notifications">Add notification rule</button>
-
-    <h2 class="mt-4">SLA rules</h2>
-    <div id="slaRules">
-        @for (var i = 0; i < Model.SlaRules.Count; i++)
-        {
-            <div class="fb-repeat-row">
-                <input type="hidden" name="SlaRules[@i].Id" value="@Model.SlaRules[i].Id" />
-                <div><label>Expected by (local)</label><input type="time" name="SlaRules[@i].ExpectedByLocalTime" value="@Model.SlaRules[i].ExpectedByLocalTime.ToString("HH:mm")" /></div>
-                <div><label>Min file count</label><input type="number" name="SlaRules[@i].MinFileCount" value="@Model.SlaRules[i].MinFileCount" /></div>
-                <div><label>File pattern</label><input name="SlaRules[@i].FilePattern" value="@Model.SlaRules[i].FilePattern" /></div>
-                <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
+            <div>
+                <label>Destination Connection Endpoint <span class="text-danger">*</span></label>
+                <select name="DestinationEndpointId" id="dstEndpointSelect">
+                    @foreach (var e in endpoints) {
+                        <option value="@e.Id" selected="@(Model.DestinationEndpointId == e.Id)">@e.Name</option>
+                    }
+                </select>
             </div>
-        }
-    </div>
-    <template id="slaRules-template">
-        <div class="fb-repeat-row">
-            <input type="hidden" name="SlaRules[0].Id" value="0" />
-            <div><label>Expected by (local)</label><input type="time" name="SlaRules[0].ExpectedByLocalTime" value="08:00" /></div>
-            <div><label>Min file count</label><input type="number" name="SlaRules[0].MinFileCount" value="1" /></div>
-            <div><label>File pattern</label><input name="SlaRules[0].FilePattern" /></div>
-            <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
         </div>
-    </template>
-    <button type="button" class="btn-fb secondary" data-fb-add-row="slaRules">Add SLA rule</button>
-</div>
 
-</div>
+        <div class="d-flex align-items-center gap-4 pt-2">
+            <div class="checkline">
+                <input name="IsEnabled" value="true" type="checkbox" id="jobEnabled" @(Model.IsEnabled ? "checked" : "") />
+                <label for="jobEnabled"><strong>Job Active</strong> (Enabled in Quartz engine)</label>
+            </div>
+            <div class="checkline">
+                <input name="IsPaused" value="true" type="checkbox" id="jobPaused" @(Model.IsPaused ? "checked" : "") />
+                <label for="jobPaused"><strong>Paused</strong> (Temporarily hold schedule triggers)</label>
+            </div>
+        </div>
+    </div>
 
-<div class="divider-top mt-4 pt-3">
-    <button type="submit" class="btn-fb">Save</button>
-    <a class="fb-textlink" asp-action="Index">Cancel</a>
-    @if (Model.Id != 0)
-    {
-        <a class="fb-textlink ms-3" asp-action="Export" asp-route-id="@Model.Id">Export JSON</a>
-        <form method="post" asp-action="Clone" asp-route-id="@Model.Id" class="d-inline ms-3"><button type="submit" class="btn-fb secondary">Clone</button></form>
-        <form method="post" asp-action="Delete" asp-route-id="@Model.Id" class="d-inline ms-3" data-fb-confirm="Delete this job?"><button type="submit" class="btn-fb danger">Delete</button></form>
-    }
-</div>
+    <!-- 2. Quartz Schedule -->
+    <div class="fb-card mb-4">
+        <h2 class="fb-card-title">Quartz Schedule &amp; Execution Window</h2>
+        <div class="row mb-3">
+            <div>
+                <label>Cron Expression (Quartz 6-part format)</label>
+                <input name="CronExpression" value="@Model.CronExpression" class="fb-mono" placeholder="0 0 2 * * ? (Every day at 2:00 AM)" />
+            </div>
+            <div>
+                <label>Polling Interval (Seconds, if not Cron)</label>
+                <input name="IntervalSeconds" type="number" value="@Model.IntervalSeconds" placeholder="300" />
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Folder Mappings -->
+    <div class="fb-card mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <div>
+                <h2 class="fb-card-title">Folder Mappings</h2>
+                <p class="fb-card-desc">Define directory pairs. Use 'Browse' to explore remote filesystem trees.</p>
+            </div>
+            <button type="button" class="btn-fb secondary sm" data-fb-add-row="folders">
+                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Add Folder Map</span>
+            </button>
+        </div>
+
+        <div id="folders">
+            @for (int i = 0; i < Model.FolderMaps.Count; i++) {
+                var f = Model.FolderMaps[i];
+                <div class="row fb-repeat-row mb-3 align-items-end">
+                    <div style="flex: 2;">
+                        <label>Source Subfolder</label>
+                        <div class="input-group">
+                            <input name="FolderMaps[@i].SourceSubfolder" value="@f.SourceSubfolder" class="form-control fb-mono" placeholder="e.g. /inbound" />
+                            <button type="button" class="btn btn-outline-secondary" data-fb-browse="#srcEndpointSelect">Browse</button>
+                        </div>
+                    </div>
+                    <div style="flex: 2;">
+                        <label>Destination Subfolder</label>
+                        <div class="input-group">
+                            <input name="FolderMaps[@i].DestinationSubfolder" value="@f.DestinationSubfolder" class="form-control fb-mono" placeholder="e.g. /archive" />
+                            <button type="button" class="btn btn-outline-secondary" data-fb-browse="#dstEndpointSelect">Browse</button>
+                        </div>
+                    </div>
+                    <div class="checkline" style="margin-bottom: 8px;">
+                        <input name="FolderMaps[@i].Recursive" value="true" type="checkbox" id="rec_@i" @(f.Recursive ? "checked" : "") />
+                        <label for="rec_@i">Recursive</label>
+                    </div>
+                    <div style="margin-bottom: 6px;">
+                        <button type="button" class="btn-fb danger sm" data-fb-remove-row>Remove</button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- 4. Processing & Crypto Profile -->
+    <div class="fb-card mb-4">
+        <h2 class="fb-card-title">Processing &amp; Cryptography</h2>
+        <div class="row mb-3">
+            <div>
+                <label>Encryption Profile</label>
+                <select name="EncryptionProfileId">
+                    <option value="">None (Plaintext delivery)</option>
+                    @foreach (var p in encryptionProfiles) {
+                        <option value="@p.Id" selected="@(Model.EncryptionProfileId == p.Id)">@p.Name</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label>Duplicate Handling Policy</label>
+                <select name="DuplicatePolicyId">
+                    <option value="1" selected="@(Model.DuplicatePolicyId == 1)">Overwrite existing file</option>
+                    <option value="2" selected="@(Model.DuplicatePolicyId == 2)">Skip transfer</option>
+                    <option value="3" selected="@(Model.DuplicatePolicyId == 3)">Fail transfer</option>
+                    <option value="4" selected="@(Model.DuplicatePolicyId == 4)">Append timestamp suffix</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-3">
+        <button type="submit" class="btn-fb primary">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Save Job Configuration</span>
+        </button>
+        <a class="btn-fb secondary" href="/Jobs">Cancel</a>
+    </div>
 </form>
+
+<template id="folders-template">
+    <div class="row fb-repeat-row mb-3 align-items-end">
+        <div style="flex: 2;">
+            <label>Source Subfolder</label>
+            <div class="input-group">
+                <input name="FolderMaps[0].SourceSubfolder" class="form-control fb-mono" placeholder="e.g. /inbound" />
+                <button type="button" class="btn btn-outline-secondary" data-fb-browse="#srcEndpointSelect">Browse</button>
+            </div>
+        </div>
+        <div style="flex: 2;">
+            <label>Destination Subfolder</label>
+            <div class="input-group">
+                <input name="FolderMaps[0].DestinationSubfolder" class="form-control fb-mono" placeholder="e.g. /archive" />
+                <button type="button" class="btn btn-outline-secondary" data-fb-browse="#dstEndpointSelect">Browse</button>
+            </div>
+        </div>
+        <div class="checkline" style="margin-bottom: 8px;">
+            <input name="FolderMaps[0].Recursive" value="true" type="checkbox" id="rec_new" />
+            <label for="rec_new">Recursive</label>
+        </div>
+        <div style="margin-bottom: 6px;">
+            <button type="button" class="btn-fb danger sm" data-fb-remove-row>Remove</button>
+        </div>
+    </div>
+</template>

@@ -1,8 +1,4 @@
-@model IEnumerable<dynamic>
-@{
-    ViewData["Title"] = "Connection Endpoints";
-    ViewData["ActiveNav"] = "endpoints";
-}
+<%- include('../partials/header') %>
 
 <div class="fb-page-header">
     <div class="fb-page-title-group">
@@ -22,7 +18,7 @@
 <div class="fb-table-container">
     <div class="fb-table-toolbar">
         <div class="fb-table-filter-group">
-            <button type="button" class="btn-fb secondary sm active" data-fb-filter-tab="all" data-fb-filter-target="fb-endpoints-table">All Endpoints (@Model.Count())</button>
+            <button type="button" class="btn-fb secondary sm active" data-fb-filter-tab="all" data-fb-filter-target="fb-endpoints-table">All Endpoints (<%= endpoints ? endpoints.length : 0 %>)</button>
             <button type="button" class="btn-fb secondary sm" data-fb-filter-tab="sftp" data-fb-filter-target="fb-endpoints-table">SFTP</button>
             <button type="button" class="btn-fb secondary sm" data-fb-filter-tab="smb" data-fb-filter-target="fb-endpoints-table">SMB / Shares</button>
             <button type="button" class="btn-fb secondary sm" data-fb-filter-tab="https" data-fb-filter-target="fb-endpoints-table">HTTPS API</button>
@@ -41,7 +37,7 @@
             </tr>
         </thead>
         <tbody>
-        @if (!Model.Any()) {
+        <% if (!endpoints || endpoints.length === 0) { %>
             <tr>
                 <td colspan="5" class="fb-empty">
                     <svg width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-muted mb-2">
@@ -50,52 +46,67 @@
                     <div>No connection endpoints configured. Click "Add Endpoint" to register a host.</div>
                 </td>
             </tr>
-        } else {
-            @foreach (var e in Model) {
-                var proto = (string)(e.EndpointTypeName ?? "SMB");
-                var protoLower = proto.ToLowerInvariant();
-                <tr data-filter="@protoLower">
+        <% } else { %>
+            <% endpoints.forEach(function(e) { 
+                var typeName = (endpointTypeNames[e.endpointTypeId] || 'Smb').toLowerCase();
+            %>
+                <tr data-filter="<%= typeName %>">
                     <td>
                         <div class="fw-bold text-main">
-                            <a href="/Endpoints/Edit/@e.Id" class="fb-textlink" style="color: var(--fb-text-main); font-weight: 700;">
-                                @e.Name
+                            <a href="/Endpoints/Edit/<%= e.id %>" class="fb-textlink" style="color: var(--fb-text-main); font-weight: 700;">
+                                <%= e.name %>
                             </a>
                         </div>
-                        @if (!string.IsNullOrEmpty(e.Notes)) {
-                            <div class="text-muted small">@e.Notes</div>
-                        }
+                        <% if (e.notes) { %>
+                            <div class="text-muted small"><%= e.notes %></div>
+                        <% } %>
                     </td>
                     <td>
-                        @if (protoLower == "sftp") {
+                        <% if (e.endpointTypeId === 2) { %>
                             <span class="fb-proto-tag sftp">SFTP</span>
-                        } else if (protoLower == "smb") {
+                        <% } else if (e.endpointTypeId === 1) { %>
                             <span class="fb-proto-tag smb">SMB</span>
-                        } else if (protoLower == "https") {
+                        <% } else if (e.endpointTypeId === 3) { %>
                             <span class="fb-proto-tag https">HTTPS</span>
-                        } else {
+                        <% } else { %>
                             <span class="fb-proto-tag local">LOCAL</span>
-                        }
+                        <% } %>
                     </td>
                     <td>
-                        <code class="fb-mono small">@(e.Host ?? e.BasePath ?? "-")</code>
+                        <div class="fb-mono small text-break">
+                            <%= e.host || e.baseUrl || '' %><%= (e.port ? ':' + e.port : '') %>
+                            <span class="text-muted"><%= e.basePath || '' %></span>
+                        </div>
                     </td>
                     <td>
-                        <span class="fb-badge ok">Ready</span>
+                        <span class="fb-badge <%= e.isEnabled ? 'ok' : 'muted' %>">
+                            <%= e.isEnabled ? 'Operational' : 'Disabled' %>
+                        </span>
                     </td>
                     <td class="text-end">
                         <div class="d-inline-flex align-items-center gap-1">
-                            <button type="button" class="btn-fb secondary sm" data-fb-action="post-poll" data-fb-url="/Endpoints/Test/@e.Id" data-fb-render="test" data-fb-title="Test Connection: @e.Name">
-                                Test
+                            <button type="button" class="btn-fb secondary sm" data-fb-action="post-poll" data-fb-url="/Endpoints/TestConnection/<%= e.id %>" data-fb-render="test" data-fb-title="Test Connectivity: <%= e.name %>">
+                                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                                <span>Test</span>
                             </button>
-                            <button type="button" class="btn-fb secondary sm" data-fb-explore="@e.Id" data-fb-title="Browse: @e.Name">
-                                Browse
+                            <button type="button" class="btn-fb secondary sm" data-fb-explore="<%= e.id %>" data-fb-title="Browse Filesystem: <%= e.name %>">
+                                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                </svg>
+                                <span>Browse</span>
                             </button>
-                            <a class="btn-fb secondary sm" href="/Endpoints/Edit/@e.Id">Edit</a>
+                            <a class="btn-fb primary sm" href="/Endpoints/Edit/<%= e.id %>">
+                                <span>Edit</span>
+                            </a>
                         </div>
                     </td>
                 </tr>
-            }
-        }
+            <% }); %>
+        <% } %>
         </tbody>
     </table>
 </div>
+
+<%- include('../partials/footer') %>

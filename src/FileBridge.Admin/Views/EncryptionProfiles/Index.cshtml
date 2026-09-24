@@ -1,20 +1,64 @@
-@model List<EncryptionProfile>
-@{ ViewData["Title"] = "Encryption profiles"; }
-<h1>Encryption profiles</h1>
-@if (TempData["GeneratedAesKey"] is string key)
-{
-    <div class="fb-card card-warn">
-        <strong>New AES key generated — copy it now, it will not be shown again:</strong>
-        <div class="fb-mono break-all mt-2">@key</div>
-    </div>
+@model IEnumerable<dynamic>
+@{
+    ViewData["Title"] = "Encryption Profiles";
+    ViewData["ActiveNav"] = "encryption";
 }
-<p><a class="btn-fb" asp-action="Create">Add profile</a></p>
-<table class="fb-table">
-    <thead><tr><th>Name</th><th>Operation</th><th></th></tr></thead>
-    <tbody>
-    @foreach (var p in Model)
-    {
-        <tr><td>@p.Name</td><td>@p.EncryptionOperationId</td><td><a class="fb-textlink" asp-action="Edit" asp-route-id="@p.Id">Edit</a></td></tr>
-    }
-    </tbody>
-</table>
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <h1>Cryptographic Profiles</h1>
+        <p class="fb-page-subtitle">Configure PGP/GPG keyrings, AES symmetric ciphers, and enveloped encryption keys.</p>
+    </div>
+    <div class="fb-page-actions">
+        <a class="btn-fb primary" href="/EncryptionProfiles/Create">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Add Profile</span>
+        </a>
+    </div>
+</div>
+
+<div class="fb-table-container">
+    <table class="fb-table">
+        <thead>
+            <tr>
+                <th>Profile Name</th>
+                <th>Algorithm</th>
+                <th>Key Type</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        @if (!Model.Any()) {
+            <tr>
+                <td colspan="5" class="fb-empty">
+                    <div>No encryption profiles configured. Click "Add Profile" to register keys.</div>
+                </td>
+            </tr>
+        } else {
+            @foreach (var p in Model) {
+                <tr>
+                    <td>
+                        <div class="fw-bold text-main">@p.Name</div>
+                        <div class="text-muted small">@p.Description</div>
+                    </td>
+                    <td>
+                        <span class="fb-badge info">@p.Algorithm</span>
+                    </td>
+                    <td>
+                        <code class="fb-mono small">@p.KeyType</code>
+                    </td>
+                    <td>
+                        <span class="fb-badge ok">Active</span>
+                    </td>
+                    <td class="text-end">
+                        <a class="btn-fb secondary sm" href="/EncryptionProfiles/Edit/@p.Id">Edit</a>
+                    </td>
+                </tr>
+            }
+        }
+        </tbody>
+    </table>
+</div>

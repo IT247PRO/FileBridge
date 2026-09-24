@@ -1,0 +1,195 @@
+<%- include('../partials/header') %>
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h1><%= model.id ? 'Edit Connection Endpoint' : 'Create Connection Endpoint' %></h1>
+            <% if (model.id) { %>
+                <span class="fb-badge <%= model.isEnabled !== false ? 'ok' : 'muted' %>">
+                    <%= model.isEnabled !== false ? 'Operational' : 'Disabled' %>
+                </span>
+            <% } %>
+        </div>
+        <p class="fb-page-subtitle">Configure remote credentials, host network addressing, and connection security policies.</p>
+    </div>
+    <div class="fb-page-actions">
+        <% if (model.id) { %>
+            <button type="button" class="btn-fb secondary" data-fb-action="post-poll" data-fb-url="/Endpoints/TestConnection/<%= model.id %>" data-fb-render="test" data-fb-title="Test Connection: <%= model.name %>">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <span>Test Connection</span>
+            </button>
+            <button type="button" class="btn-fb secondary" data-fb-explore="<%= model.id %>" data-fb-title="Browse Remote Filesystem: <%= model.name %>">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+                <span>Browse Files</span>
+            </button>
+        <% } %>
+        <a href="/Endpoints" class="btn-fb secondary">Back to Endpoints</a>
+    </div>
+</div>
+
+<form method="post" action="/Endpoints/Save" class="fb-form">
+    <input type="hidden" name="id" value="<%= model.id || 0 %>" />
+
+    <div class="fb-card mb-4">
+        <h2 class="fb-card-title">Endpoint Configuration</h2>
+        <p class="fb-card-desc">Basic identification and protocol specification.</p>
+
+        <div class="row mb-3">
+            <div>
+                <label>Endpoint Name <span class="text-danger">*</span></label>
+                <input name="name" value="<%= model.name || '' %>" placeholder="e.g. Core_SFTP_Gateway" required />
+            </div>
+            <div>
+                <label>Protocol Type <span class="text-danger">*</span></label>
+                <select name="endpointTypeId" id="endpointTypeIdSelect">
+                    <option value="1" <%= model.endpointTypeId == 1 ? 'selected' : '' %>>SMB / Windows Network Share</option>
+                    <option value="2" <%= model.endpointTypeId == 2 ? 'selected' : '' %>>SFTP (SSH File Transfer Protocol)</option>
+                    <option value="3" <%= model.endpointTypeId == 3 ? 'selected' : '' %>>HTTPS REST Gateway</option>
+                    <option value="4" <%= model.endpointTypeId == 4 ? 'selected' : '' %>>Local Filesystem / Disk</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div>
+                <label>Host Name or IP (SFTP / SMB)</label>
+                <input name="host" value="<%= model.host || '' %>" placeholder="sftp.vendor.gov or 10.200.4.50" />
+            </div>
+            <div>
+                <label>Port</label>
+                <input name="port" type="number" value="<%= model.port || '' %>" placeholder="22 (SFTP) or 445 (SMB)" />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label>Base Path / Root Directory <span class="text-danger">*</span></label>
+            <input name="basePath" value="<%= model.basePath || '' %>" placeholder="\\server\share\data or /inbound/production" class="fb-mono" required />
+            <div class="text-muted small mt-1">All relative job folder maps branch off this base path.</div>
+        </div>
+
+        <div>
+            <label>SFTP Host Key Fingerprint (SHA-256)</label>
+            <input name="hostKeyFingerprint" value="<%= model.hostKeyFingerprint || '' %>" class="fb-mono" placeholder="4t7fXy19Q2sW83hB2L3m4p7r8s9t0v..." />
+            <div class="text-muted small mt-1">Strict host key verification protects against man-in-the-middle attacks. Run "Test Connection" to discover host key.</div>
+        </div>
+    </div>
+
+    <!-- HTTPS Specific Configuration -->
+    <div class="fb-card mb-4" data-show-if="endpointTypeId=3">
+        <h2 class="fb-card-title">HTTPS REST Protocol Routes</h2>
+        <p class="fb-card-desc">Endpoints operating over HTTPS require custom REST resource URI mapping.</p>
+
+        <div class="mb-3">
+            <label>Base URL</label>
+            <input name="baseUrl" value="<%= model.baseUrl || '' %>" placeholder="https://api.partner.example.gov/v1" class="fb-mono" />
+        </div>
+
+        <div class="row mb-3">
+            <div>
+                <label>List Route</label>
+                <input name="listRoute" value="<%= model.listRoute || '' %>" placeholder="/files" class="fb-mono" />
+            </div>
+            <div>
+                <label>Download Route</label>
+                <input name="downloadRoute" value="<%= model.downloadRoute || '' %>" placeholder="/files/{id}" class="fb-mono" />
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div>
+                <label>Upload Route</label>
+                <input name="uploadRoute" value="<%= model.uploadRoute || '' %>" placeholder="/files/upload" class="fb-mono" />
+            </div>
+            <div>
+                <label>Delete Route</label>
+                <input name="deleteRoute" value="<%= model.deleteRoute || '' %>" placeholder="/files/{id}" class="fb-mono" />
+            </div>
+        </div>
+
+        <div>
+            <label>Rename Route</label>
+            <input name="renameRoute" value="<%= model.renameRoute || '' %>" placeholder="/files/{id}/rename" class="fb-mono" />
+        </div>
+    </div>
+
+    <!-- Security & Credentials -->
+    <div class="fb-card mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <div>
+                <h2 class="fb-card-title">Authentication & Credentials</h2>
+                <p class="fb-card-desc">Encrypted at rest using Windows DPAPI or master machine protection.</p>
+            </div>
+            <% if (model.hasStoredCredential) { %>
+                <span class="fb-badge ok">Stored Credential Active</span>
+            <% } %>
+        </div>
+
+        <% if (model.hasStoredCredential) { %>
+            <div class="alert alert-info py-2 px-3 small mb-3">
+                A secure credential is encrypted on this endpoint. Leave password/private key fields blank to keep the existing credentials unchanged.
+            </div>
+        <% } %>
+
+        <div class="row mb-3">
+            <div>
+                <label>Windows Domain (SMB only)</label>
+                <input name="domain" value="<%= model.domain || '' %>" placeholder="CORP" />
+            </div>
+            <div>
+                <label>Username</label>
+                <input name="username" value="<%= model.username || '' %>" placeholder="svc_filebridge" autocomplete="off" />
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div>
+                <label>Password</label>
+                <input name="password" type="password" autocomplete="new-password" placeholder="<%= model.hasStoredCredential ? '••••••••' : 'Enter password...' %>" />
+            </div>
+            <div>
+                <label>Private Key Passphrase (SFTP)</label>
+                <input name="passphrase" type="password" autocomplete="new-password" placeholder="Passphrase if key is encrypted" />
+            </div>
+        </div>
+
+        <div>
+            <label>Private Key (OpenSSH PEM format, SFTP)</label>
+            <textarea name="privateKey" rows="3" class="fb-mono" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"></textarea>
+        </div>
+    </div>
+
+    <!-- Network Timeout & Operational State -->
+    <div class="fb-card mb-4">
+        <h2 class="fb-card-title">Operational Controls</h2>
+        <div class="row mb-3">
+            <div>
+                <label>Connection Timeout (Seconds)</label>
+                <input name="timeoutSeconds" type="number" value="<%= model.timeoutSeconds || 60 %>" min="5" max="600" />
+            </div>
+            <div>
+                <label>Internal Operational Notes</label>
+                <input name="notes" value="<%= model.notes || '' %>" placeholder="Maintenance window, firewall ticket, or escalation contact..." />
+            </div>
+        </div>
+        <div class="checkline p-3 bg-light rounded border">
+            <input name="isEnabled" value="true" type="checkbox" id="epEnabled" <%= model.isEnabled !== false ? 'checked' : '' %> />
+            <label for="epEnabled"><strong>Endpoint Active</strong> (Permit transfer jobs to connect through this endpoint)</label>
+        </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-3">
+        <button type="submit" class="btn-fb primary">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Save Endpoint</span>
+        </button>
+        <a class="btn-fb secondary" href="/Endpoints">Cancel</a>
+    </div>
+</form>
+
+<%- include('../partials/footer') %>

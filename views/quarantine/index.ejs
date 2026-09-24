@@ -1,0 +1,83 @@
+<%- include('../partials/header') %>
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h1>Quarantine Review Queue</h1>
+            <% if (quarantines && quarantines.length > 0) { %>
+                <span class="fb-badge fail"><%= quarantines.length %> Held File(s)</span>
+            <% } else { %>
+                <span class="fb-badge ok">Clean</span>
+            <% } %>
+        </div>
+        <p class="fb-page-subtitle">Inspect, release, or discard suspicious or malicious payloads flagged by antivirus and file sniffing engines.</p>
+    </div>
+    <div class="fb-page-actions">
+        <a href="/History" class="btn-fb secondary">View Transfer History</a>
+    </div>
+</div>
+
+<% if (!quarantines || quarantines.length === 0) { %>
+    <div class="fb-card">
+        <div class="fb-empty">
+            <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-success mb-2">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <div class="fw-bold text-main">Quarantine is empty</div>
+            <div class="text-muted small mt-1">No files are currently quarantined or awaiting security triage.</div>
+        </div>
+    </div>
+<% } else { %>
+    <div class="fb-table-container">
+        <table class="fb-table">
+            <thead>
+                <tr>
+                    <th>Held Date (UTC)</th>
+                    <th>Transfer Job</th>
+                    <th>Quarantined File</th>
+                    <th>Detection Reason</th>
+                    <th class="text-end">Remediation</th>
+                </tr>
+            </thead>
+            <tbody>
+            <% quarantines.forEach(function(q) { %>
+                <tr>
+                    <td class="fb-mono text-muted small">
+                        <%= new Date(q.createdUtc).toISOString().replace('T', ' ').substring(0, 19) %>
+                    </td>
+                    <td class="fw-bold text-main">
+                        <%= q.jobName %>
+                    </td>
+                    <td>
+                        <div class="fb-mono small fw-semibold text-break">
+                            <%= q.originalPath.split('\\').pop()?.split('/').pop() %>
+                        </div>
+                        <div class="text-muted text-xs fb-mono text-break"><%= q.originalPath %></div>
+                    </td>
+                    <td>
+                        <span class="fb-badge fail"><%= q.reason %></span>
+                    </td>
+                    <td class="text-end">
+                        <div class="d-inline-flex align-items-center gap-2">
+                            <button type="button" class="btn-fb secondary sm" data-fb-action="post-poll" data-fb-url="/Quarantine/Release/<%= q.id %>" data-fb-render="message" data-fb-title="Release File: <%= q.id %>" data-fb-confirm="Release this file from quarantine and deliver it to the target destination?">
+                                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Release</span>
+                            </button>
+                            <button type="button" class="btn-fb danger sm" data-fb-action="post-poll" data-fb-url="/Quarantine/Discard/<%= q.id %>" data-fb-render="message" data-fb-title="Discard Quarantined File: <%= q.id %>" data-fb-confirm="Permanently delete this file from the quarantine vault? This action cannot be undone.">
+                                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                <span>Discard</span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            <% }); %>
+            </tbody>
+        </table>
+    </div>
+<% } %>
+
+<%- include('../partials/footer') %>

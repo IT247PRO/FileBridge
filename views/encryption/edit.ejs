@@ -1,0 +1,94 @@
+<%- include('../partials/header') %>
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h1><%= model.id ? 'Edit Encryption Profile' : 'Create Encryption Profile' %></h1>
+            <% if (model.hasStoredKeys) { %>
+                <span class="fb-badge ok">Keys Stored</span>
+            <% } %>
+        </div>
+        <p class="fb-page-subtitle">Configure OpenPGP armored keys, passphrases, and authenticated symmetric encryption.</p>
+    </div>
+    <div class="fb-page-actions">
+        <a class="btn-fb secondary" href="/EncryptionProfiles">Back to Profiles</a>
+    </div>
+</div>
+
+<form method="post" action="/EncryptionProfiles/Save" class="fb-form">
+    <input type="hidden" name="id" value="<%= model.id || 0 %>" />
+
+    <div class="fb-card mb-4">
+        <h2 class="fb-card-title">Profile Parameters</h2>
+        <div class="row mb-3">
+            <div>
+                <label>Profile Name <span class="text-danger">*</span></label>
+                <input name="name" value="<%= model.name || '' %>" placeholder="e.g. Vendor_OpenPGP_Inbound" required />
+            </div>
+            <div>
+                <label>Cryptographic Operation <span class="text-danger">*</span></label>
+                <select name="encryptionOperationId">
+                    <option value="1" <%= model.encryptionOperationId == 1 ? 'selected' : '' %>>None (Pass-through)</option>
+                    <option value="2" <%= model.encryptionOperationId == 2 ? 'selected' : '' %>>OpenPGP Encrypt</option>
+                    <option value="3" <%= model.encryptionOperationId == 3 ? 'selected' : '' %>>OpenPGP Decrypt</option>
+                    <option value="4" <%= model.encryptionOperationId == 4 ? 'selected' : '' %>>OpenPGP Encrypt and Sign</option>
+                    <option value="5" <%= model.encryptionOperationId == 5 ? 'selected' : '' %>>OpenPGP Decrypt and Verify</option>
+                    <option value="6" <%= model.encryptionOperationId == 6 ? 'selected' : '' %>>AES-256-GCM Encrypt</option>
+                    <option value="7" <%= model.encryptionOperationId == 7 ? 'selected' : '' %>>AES-256-GCM Decrypt</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="alert alert-info py-2 px-3 small mb-0">
+            <%= model.hasStoredKeys ? 'Cryptographic keys are securely stored in the database vault. Leave key fields empty to preserve current keys.' : 'For AES operations, leaving the key blank generates a new cryptographically secure 256-bit key upon saving.' %>
+        </div>
+    </div>
+
+    <!-- PGP Key Blocks -->
+    <div class="fb-card mb-4">
+        <h2 class="fb-card-title">OpenPGP Keys (RFC 4880)</h2>
+        <div class="mb-3">
+            <label>PGP Public Key Block (ASCII-Armored)</label>
+            <textarea name="publicKey" rows="3" class="fb-mono small" placeholder="-----BEGIN PGP PUBLIC KEY BLOCK-----&#10;...&#10;-----END PGP PUBLIC KEY BLOCK-----"></textarea>
+        </div>
+        <div class="mb-3">
+            <label>PGP Private Key Block (ASCII-Armored)</label>
+            <textarea name="privateKey" rows="3" class="fb-mono small" placeholder="-----BEGIN PGP PRIVATE KEY BLOCK-----&#10;...&#10;-----END PGP PRIVATE KEY BLOCK-----"></textarea>
+        </div>
+        <div>
+            <label>Private Key Passphrase</label>
+            <input name="passphrase" type="password" autocomplete="new-password" placeholder="Passphrase for private key decryption" />
+        </div>
+    </div>
+
+    <!-- File Extension & Formatting Controls -->
+    <div class="fb-card mb-4">
+        <h2 class="fb-card-title">File Formatting &amp; Extensions</h2>
+        <div class="row mb-3">
+            <div>
+                <label>Output Extension</label>
+                <input name="outputExtension" value="<%= model.outputExtension || '' %>" placeholder=".pgp or .enc" class="fb-mono" />
+            </div>
+            <div class="checkline mt-4">
+                <input name="stripExtensionOnDecrypt" value="true" type="checkbox" id="stripExt" <%= model.stripExtensionOnDecrypt !== false ? 'checked' : '' %> />
+                <label for="stripExt"><strong>Strip extension on decrypt</strong> (Restore original filename)</label>
+            </div>
+        </div>
+        <div class="checkline">
+            <input name="armorOutput" value="true" type="checkbox" id="armorOut" <%= model.armorOutput ? 'checked' : '' %> />
+            <label for="armorOut"><strong>ASCII-Armor PGP Output</strong> (Generate human-readable <code>.asc</code> formatted text files)</label>
+        </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-3">
+        <button type="submit" class="btn-fb primary">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Save Profile</span>
+        </button>
+        <a class="btn-fb secondary" href="/EncryptionProfiles">Cancel</a>
+    </div>
+</form>
+
+<%- include('../partials/footer') %>

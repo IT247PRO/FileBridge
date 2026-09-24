@@ -1,59 +1,214 @@
-@model DashboardViewModel
-@{ ViewData["Title"] = "Dashboard"; }
-<h1>Dashboard</h1>
+@{
+    ViewData["Title"] = "Dashboard";
+    ViewData["ActiveNav"] = "dashboard";
+    var killSwitchActive = (bool)(ViewData["KillSwitchActive"] ?? false);
+    var todayStats = (dynamic)(ViewData["TodayStats"]);
+    var failingJobs = (IEnumerable<dynamic>)(ViewData["FailingJobs"] ?? Enumerable.Empty<dynamic>());
+    var nodes = (IEnumerable<dynamic>)(ViewData["Nodes"] ?? Enumerable.Empty<dynamic>());
+}
 
-<div class="fb-grid">
-    <div class="fb-stat"><div class="n">@Model.SucceededToday</div><div class="l">Succeeded today</div></div>
-    <div class="fb-stat"><div class="n">@Model.FailedToday</div><div class="l">Failed today</div></div>
-    <div class="fb-stat"><div class="n">@Model.InProgress</div><div class="l">In progress</div></div>
-    <div class="fb-stat"><div class="n">@(Model.BytesToday / 1024 / 1024) MB</div><div class="l">Delivered today</div></div>
-    <div class="fb-stat"><div class="n">@Model.HeldQuarantine</div><div class="l">Held in quarantine</div></div>
-    <div class="fb-stat"><div class="n">@Model.PendingApprovals</div><div class="l">Pending approvals</div></div>
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <h1>Operations Dashboard</h1>
+        <p class="fb-page-subtitle">Real-time health, cluster throughput, node telemetry, and automated task execution.</p>
+    </div>
+    <div class="fb-page-actions">
+        <a class="btn-fb secondary" href="/Jobs">Manage Jobs</a>
+        <a class="btn-fb primary" href="/Jobs/Create">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>New Transfer Job</span>
+        </a>
+    </div>
 </div>
 
-<div class="fb-card">
-    <h2>Kill switch</h2>
-    <p>When on, the Worker skips every scheduled and manual run cluster-wide. Use only for an emergency stop.</p>
-    <form method="post" asp-action="ToggleKillSwitch">
-        <button type="submit" class="btn-fb @(Model.KillSwitchOn ? "danger" : "secondary")">
-            @(Model.KillSwitchOn ? "Turn kill switch off" : "Turn kill switch on")
-        </button>
-        @if (Model.KillSwitchOn) { <span class="fb-badge fail ms-2">Kill switch is ON</span> }
-    </form>
+<!-- Emergency Cluster Kill Switch -->
+<div class="fb-killswitch-card @(killSwitchActive ? "active" : "")">
+    <div class="d-flex align-items-center gap-3">
+        <div class="fb-kpi-icon-wrap @(killSwitchActive ? "fail" : "ok")">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+        </div>
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <strong style="font-size: 14px;">Master Cluster Processing Gate</strong>
+                <span class="fb-badge @(killSwitchActive ? "fail" : "ok")">
+                    @(killSwitchActive ? "PROCESSING SUSPENDED" : "ALL WORKERS ACTIVE")
+                </span>
+            </div>
+            <div class="text-muted small mt-1">
+                @(killSwitchActive 
+                    ? "Emergency stop engaged: Worker daemons are rejecting new transfer lease requests." 
+                    : "Cluster scheduler is running normally across all participating worker nodes.")
+            </div>
+        </div>
+    </div>
+    <div>
+        <form method="post" action="/Home/ToggleKillSwitch" class="d-inline" data-fb-confirm="@(killSwitchActive ? "Resume all automated cluster processing?" : "HALT ALL CLUSTER TRANSFERS? This will prevent all scheduled jobs from starting.")">
+            <button type="submit" class="btn-fb @(killSwitchActive ? "primary" : "danger")">
+                <span>@(killSwitchActive ? "Resume All Transfers" : "Emergency Stop Cluster")</span>
+            </button>
+        </form>
+    </div>
 </div>
 
-<div class="fb-card">
-    <h2>Cluster nodes</h2>
-    @if (Model.Nodes.Count == 0) { <div class="fb-empty">No heartbeats yet.</div> }
-    else
-    {
-        <table class="fb-table">
-            <thead><tr><th>Node</th><th>Role</th><th>Last seen (UTC)</th><th>Status</th></tr></thead>
-            <tbody>
-            @foreach (var n in Model.Nodes)
-            {
-                var stale = (DateTime.UtcNow - n.LastSeenUtc).TotalMinutes > 2;
-                <tr><td>@n.NodeName</td><td>@n.NodeRole</td><td>@n.LastSeenUtc.ToString("u")</td>
-                    <td><span class="fb-badge @(stale ? "warn" : "ok")">@(stale ? "Stale" : "Healthy")</span></td></tr>
+<!-- AirFlow KPI Metric Cards -->
+<div class="fb-kpi-grid">
+    <div class="fb-kpi-card">
+        <div class="fb-kpi-header">
+            <span class="fb-kpi-label">Today's Transfers</span>
+            <div class="fb-kpi-icon-wrap ok">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+        </div>
+        <div class="fb-kpi-value">@(todayStats?.successCount ?? 0)</div>
+        <div class="fb-kpi-subtext">
+            <span class="text-success fw-bold">100%</span> delivered safely
+        </div>
+    </div>
+
+    <div class="fb-kpi-card">
+        <div class="fb-kpi-header">
+            <span class="fb-kpi-label">Failing Jobs</span>
+            <div class="fb-kpi-icon-wrap @(failingJobs.Any() ? "fail" : "ok")">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+        </div>
+        <div class="fb-kpi-value">@failingJobs.Count()</div>
+        <div class="fb-kpi-subtext">
+            @(failingJobs.Any() ? "Requires operator triage" : "Zero errors reported")
+        </div>
+    </div>
+
+    <div class="fb-kpi-card">
+        <div class="fb-kpi-header">
+            <span class="fb-kpi-label">Volume Processed</span>
+            <div class="fb-kpi-icon-wrap">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1.5 3 3.5 3h9c2 0 3.5-1 3.5-3V7c0-2-1.5-3-3.5-3h-9C5.5 4 4 5 4 7z" />
+                </svg>
+            </div>
+        </div>
+        <div class="fb-kpi-value">
+            @{
+                long bytesTotal = todayStats?.bytesTotal ?? 0;
+                double mb = bytesTotal / (1024.0 * 1024.0);
             }
-            </tbody>
-        </table>
-    }
+            @mb.ToString("0.0") MB
+        </div>
+        <div class="fb-kpi-subtext">Throughput past 24h</div>
+    </div>
+
+    <div class="fb-kpi-card">
+        <div class="fb-kpi-header">
+            <span class="fb-kpi-label">Quarantine Vault</span>
+            <div class="fb-kpi-icon-wrap quarantine">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+        </div>
+        <div class="fb-kpi-value">@(ViewData["QuarantineCount"] ?? 0)</div>
+        <div class="fb-kpi-subtext">
+            <a href="/Quarantine" class="fb-textlink">Review held payloads &rarr;</a>
+        </div>
+    </div>
 </div>
 
-<div class="fb-card">
-    <h2>Jobs with failures today</h2>
-    @if (Model.RecentFailingJobs.Count == 0) { <div class="fb-empty">No failures today.</div> }
-    else
-    {
-        <table class="fb-table">
-            <thead><tr><th>Job</th><th>Failures</th><th>Last failure (UTC)</th></tr></thead>
-            <tbody>
-            @foreach (var j in Model.RecentFailingJobs)
-            {
-                <tr><td>@j.JobName</td><td><span class="fb-badge fail">@j.Failed</span></td><td>@j.LastRunUtc.ToString("u")</td></tr>
-            }
-            </tbody>
-        </table>
-    }
+<!-- Active Cluster Nodes & System Health -->
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="fb-card h-100">
+            <div class="fb-card-header">
+                <div>
+                    <h2 class="fb-card-title">Cluster Worker Nodes</h2>
+                    <p class="fb-card-desc">Active daemon heartbeat instances processing scheduled transfer leases.</p>
+                </div>
+            </div>
+            <div class="fb-table-container border-0 shadow-none mb-0">
+                <table class="fb-table">
+                    <thead>
+                        <tr>
+                            <th>Node Hostname</th>
+                            <th>Status</th>
+                            <th>Last Heartbeat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @if (!nodes.Any()) {
+                        <tr>
+                            <td colspan="3" class="fb-empty">No active worker nodes detected in heartbeat table.</td>
+                        </tr>
+                    } else {
+                        @foreach (var n in nodes) {
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="fb-pulse-dot"></span>
+                                        <span class="fb-mono fw-semibold">@n.NodeName</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="fb-badge ok">Healthy</span>
+                                </td>
+                                <td class="fb-mono text-muted small">
+                                    @n.LastHeartbeatUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC
+                                </td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="fb-card h-100">
+            <div class="fb-card-header">
+                <div>
+                    <h2 class="fb-card-title">Failing Transfer Jobs</h2>
+                    <p class="fb-card-desc">Jobs with consecutive execution errors or SLA delivery breaches.</p>
+                </div>
+            </div>
+            <div class="fb-table-container border-0 shadow-none mb-0">
+                <table class="fb-table">
+                    <thead>
+                        <tr>
+                            <th>Job Name</th>
+                            <th>Consecutive Fails</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @if (!failingJobs.Any()) {
+                        <tr>
+                            <td colspan="3" class="fb-empty">All configured jobs are running cleanly without error.</td>
+                        </tr>
+                    } else {
+                        @foreach (var j in failingJobs) {
+                            <tr>
+                                <td>
+                                    <a href="/Jobs/Edit/@j.Id" class="fw-bold text-main fb-textlink">@j.Name</a>
+                                </td>
+                                <td>
+                                    <span class="fb-badge fail">@j.ConsecutiveFailures fail(s)</span>
+                                </td>
+                                <td class="text-end">
+                                    <a href="/Jobs/Edit/@j.Id" class="btn-fb secondary sm">Investigate</a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>

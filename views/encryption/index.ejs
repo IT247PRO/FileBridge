@@ -1,0 +1,82 @@
+<%- include('../partials/header') %>
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <h1>Encryption Profiles</h1>
+        <p class="fb-page-subtitle">Standardized cryptographic profiles for OpenPGP public key cryptography and AES-GCM data at rest.</p>
+    </div>
+    <div class="fb-page-actions">
+        <a class="btn-fb primary" href="/EncryptionProfiles/Create">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Add Encryption Profile</span>
+        </a>
+    </div>
+</div>
+
+<% if (typeof generatedKey !== 'undefined' && generatedKey) { %>
+    <div class="fb-card fb-card-warn mb-4">
+        <div class="d-flex align-items-center gap-2 mb-2 text-warning fw-bold">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>New AES Secret Key Generated — Copy it now, it will not be displayed again:</span>
+        </div>
+        <div class="p-3 bg-white rounded border fb-mono text-break user-select-all fw-bold text-dark">
+            <%= generatedKey %>
+        </div>
+    </div>
+<% } %>
+
+<div class="fb-table-container">
+    <table class="fb-table">
+        <thead>
+            <tr>
+                <th>Profile Name</th>
+                <th>Cryptographic Operation</th>
+                <th>Cipher Standard</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        <% if (!profiles || profiles.length === 0) { %>
+            <tr>
+                <td colspan="4" class="fb-empty">
+                    <svg width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-muted mb-2">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <div>No encryption profiles configured. Click "Add Encryption Profile" to create one.</div>
+                </td>
+            </tr>
+        <% } else { %>
+            <% profiles.forEach(function(p) { 
+                var opName = encryptionOperationNames[p.encryptionOperationId] || 'None';
+                var isPgp = opName.toLowerCase().includes('pgp');
+                var isAes = opName.toLowerCase().includes('aes');
+            %>
+                <tr>
+                    <td>
+                        <a href="/EncryptionProfiles/Edit/<%= p.id %>" class="fb-textlink fw-bold text-main">
+                            <%= p.name %>
+                        </a>
+                    </td>
+                    <td>
+                        <span class="fb-proto-tag <%= isPgp ? 'sftp' : (isAes ? 'https' : '') %>"><%= opName %></span>
+                    </td>
+                    <td>
+                        <span class="text-muted small"><%= isPgp ? 'OpenPGP (RFC 4880)' : (isAes ? 'AES-256-GCM Authenticated' : 'Plaintext') %></span>
+                    </td>
+                    <td class="text-end">
+                        <a class="btn-fb secondary sm" href="/EncryptionProfiles/Edit/<%= p.id %>">
+                            <span>Edit Profile</span>
+                        </a>
+                    </td>
+                </tr>
+            <% }); %>
+        <% } %>
+        </tbody>
+    </table>
+</div>
+
+<%- include('../partials/footer') %>

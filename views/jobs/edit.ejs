@@ -1,0 +1,646 @@
+<%- include('../partials/header') %>
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h1><%= model.id ? 'Edit Transfer Job' : 'Create Transfer Job' %></h1>
+            <% if (model.id) { %>
+                <span class="fb-badge info">Version <%= model.version || 1 %></span>
+                <% if (!model.isEnabled) { %>
+                    <span class="fb-badge muted">Disabled</span>
+                <% } else if (model.isPaused) { %>
+                    <span class="fb-badge warn">Paused</span>
+                <% } else { %>
+                    <span class="fb-badge ok">Active</span>
+                <% } %>
+            <% } %>
+        </div>
+        <p class="fb-page-subtitle">Configure routing endpoints, transfer rules, schedules, and post-processing governance.</p>
+    </div>
+    <div class="fb-page-actions">
+        <% if (model.id) { %>
+            <a href="/Jobs/Versions/<%= model.id %>" class="btn-fb secondary">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Version Snapshots</span>
+            </a>
+            <button type="button" class="btn-fb secondary" data-fb-action="post-poll" data-fb-url="/Jobs/DryRun/<%= model.id %>" data-fb-render="dryrun" data-fb-title="Dry Run Pre-flight: <%= model.name %>">
+                <span>Test Dry Run</span>
+            </button>
+        <% } %>
+        <a href="/Jobs" class="btn-fb secondary">Back to Jobs</a>
+    </div>
+</div>
+
+<% if (typeof errors !== 'undefined' && errors && errors.length > 0) { %>
+    <div class="fb-card fb-card-fail mb-4">
+        <div class="d-flex align-items-center gap-2 mb-2 text-danger fw-bold">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Please resolve the following configuration issues:</span>
+        </div>
+        <ul class="m-0 ps-3 text-danger">
+            <% errors.forEach(function(e) { %> <li><%= e %></li> <% }); %>
+        </ul>
+    </div>
+<% } %>
+
+<form method="post" action="/Jobs/Save" class="fb-form" id="job-form">
+<input type="hidden" name="id" value="<%= model.id || 0 %>" />
+<input type="hidden" name="version" value="<%= model.version || 1 %>" />
+
+<div class="fb-card p-0 overflow-hidden">
+    <!-- AirFlow Segmented Tab Rail -->
+    <div style="background-color: var(--fb-bg-subtle); padding: 6px 14px 0 14px; border-bottom: 1px solid var(--fb-border);">
+        <ul class="nav nav-tabs border-0" role="tablist" style="gap: 4px;">
+            <li class="nav-item"><button class="nav-link active fw-semibold" data-bs-toggle="tab" data-bs-target="#t-general" type="button" style="border-radius: 6px 6px 0 0; font-size: 13px;">1. General & Route</button></li>
+            <li class="nav-item"><button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#t-schedule" type="button" style="border-radius: 6px 6px 0 0; font-size: 13px;">2. Schedule & Timezone</button></li>
+            <li class="nav-item"><button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#t-folders" type="button" style="border-radius: 6px 6px 0 0; font-size: 13px;">3. Folders & Filters</button></li>
+            <li class="nav-item"><button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#t-processing" type="button" style="border-radius: 6px 6px 0 0; font-size: 13px;">4. Processing & Crypto</button></li>
+            <li class="nav-item"><button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#t-semaphore" type="button" style="border-radius: 6px 6px 0 0; font-size: 13px;">5. Semaphore & Post-Action</button></li>
+            <li class="nav-item"><button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#t-notify" type="button" style="border-radius: 6px 6px 0 0; font-size: 13px;">6. Notifications & SLA</button></li>
+        </ul>
+    </div>
+
+    <div class="tab-content" style="padding: 24px;">
+
+    <!-- TAB 1: GENERAL & ROUTE -->
+    <div class="tab-pane fade show active" id="t-general">
+        <div class="row mb-3">
+            <div>
+                <label>Job Name <span class="text-danger">*</span></label>
+                <input name="name" value="<%= model.name || '' %>" placeholder="e.g. SFTP_Partner_Daily_Ingest" required />
+            </div>
+            <div>
+                <label>Transfer Direction</label>
+                <select name="transferDirectionId">
+                    <option value="1" <%= model.transferDirectionId == 1 ? 'selected' : '' %>>Inbound (Remote to Local/Storage)</option>
+                    <option value="2" <%= model.transferDirectionId == 2 ? 'selected' : '' %>>Outbound (Local/Storage to Remote)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label>Business Description</label>
+            <textarea name="description" rows="2" placeholder="Summary of data payload, business owner, and retention requirements..."><%= model.description || '' %></textarea>
+        </div>
+
+        <fieldset class="mb-3">
+            <legend>Routing Endpoints</legend>
+            <div class="row">
+                <div>
+                    <label>Source Endpoint <span class="text-danger">*</span></label>
+                    <select name="sourceEndpointId" id="sourceEndpointSelect" required>
+                        <% endpoints.forEach(function(ep) { %>
+                            <option value="<%= ep.id %>" <%= model.sourceEndpointId == ep.id ? 'selected' : '' %>>
+                                <%= ep.name %> (<%= ep.endpointTypeId === 1 ? 'SMB' : (ep.endpointTypeId === 2 ? 'SFTP' : (ep.endpointTypeId === 3 ? 'HTTPS' : 'DISK')) %>)
+                            </option>
+                        <% }); %>
+                    </select>
+                </div>
+                <div>
+                    <label>Destination Endpoint <span class="text-danger">*</span></label>
+                    <select name="destinationEndpointId" id="destEndpointSelect" required>
+                        <% endpoints.forEach(function(ep) { %>
+                            <option value="<%= ep.id %>" <%= model.destinationEndpointId == ep.id ? 'selected' : '' %>>
+                                <%= ep.name %> (<%= ep.endpointTypeId === 1 ? 'SMB' : (ep.endpointTypeId === 2 ? 'SFTP' : (ep.endpointTypeId === 3 ? 'HTTPS' : 'DISK')) %>)
+                            </option>
+                        <% }); %>
+                    </select>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="d-flex align-items-center gap-4 mt-3 p-3 bg-light rounded border">
+            <div class="checkline">
+                <input name="isEnabled" value="true" type="checkbox" id="isEnabled" <%= model.isEnabled !== false ? 'checked' : '' %> />
+                <label for="isEnabled"><strong>Job Enabled</strong> (Worker runs this job when triggered)</label>
+            </div>
+            <div class="checkline">
+                <input name="isPaused" value="true" type="checkbox" id="isPaused" <%= model.isPaused ? 'checked' : '' %> />
+                <label for="isPaused"><strong>Temporarily Paused</strong> (Skip executions while under maintenance)</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: SCHEDULE -->
+    <div class="tab-pane fade" id="t-schedule">
+        <div class="row mb-3">
+            <div>
+                <label>Schedule Mode</label>
+                <select name="scheduleTypeId">
+                    <option value="1" <%= model.scheduleTypeId == 1 ? 'selected' : '' %>>Cron Expression (Quartz.NET standard)</option>
+                    <option value="2" <%= model.scheduleTypeId == 2 ? 'selected' : '' %>>Fixed Polling Interval</option>
+                </select>
+            </div>
+            <div>
+                <label>Execution Time Zone</label>
+                <select name="timeZoneId">
+                    <option value="Central Standard Time" <%= model.timeZoneId === 'Central Standard Time' ? 'selected' : '' %>>Central Standard Time (CST)</option>
+                    <option value="Eastern Standard Time" <%= model.timeZoneId === 'Eastern Standard Time' ? 'selected' : '' %>>Eastern Standard Time (EST)</option>
+                    <option value="Mountain Standard Time" <%= model.timeZoneId === 'Mountain Standard Time' ? 'selected' : '' %>>Mountain Standard Time (MST)</option>
+                    <option value="Pacific Standard Time" <%= model.timeZoneId === 'Pacific Standard Time' ? 'selected' : '' %>>Pacific Standard Time (PST)</option>
+                    <option value="UTC" <%= model.timeZoneId === 'UTC' ? 'selected' : '' %>>Coordinated Universal Time (UTC)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div>
+                <label>Cron Expression (6-part Quartz syntax with seconds)</label>
+                <input name="cronExpression" value="<%= model.cronExpression || '' %>" placeholder="0 0/5 * * * ?" class="fb-mono" />
+                <div class="text-muted small mt-1">Example: <code>0 0/15 * * * ?</code> (Every 15 min), <code>0 0 2 * * ?</code> (Daily at 2:00 AM)</div>
+            </div>
+            <div>
+                <label>Polling Interval (seconds, if interval mode selected)</label>
+                <input name="intervalSeconds" type="number" value="<%= model.intervalSeconds || 300 %>" min="10" />
+            </div>
+        </div>
+
+        <fieldset class="mb-3">
+            <legend>Active Daily Operating Window (Optional)</legend>
+            <div class="row">
+                <div>
+                    <label>Active From Time</label>
+                    <input name="activeFromTime" type="time" value="<%= model.activeFromTime || '' %>" />
+                </div>
+                <div>
+                    <label>Active To Time</label>
+                    <input name="activeToTime" type="time" value="<%= model.activeToTime || '' %>" />
+                </div>
+            </div>
+        </fieldset>
+
+        <label class="fw-semibold mb-2">Permitted Operating Days</label>
+        <div class="d-flex flex-wrap gap-3 p-3 bg-light rounded border mb-2">
+            <% 
+            var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            var activeDays = model.activeDays || [0,1,2,3,4,5,6];
+            days.forEach(function(d, idx) { 
+            %>
+                <div class="checkline">
+                    <input type="checkbox" name="activeDays" value="<%= idx %>" id="day-<%= idx %>" <%= activeDays.includes(idx) ? 'checked' : '' %> />
+                    <label for="day-<%= idx %>"><%= d %></label>
+                </div>
+            <% }); %>
+        </div>
+    </div>
+
+    <!-- TAB 3: FOLDERS & FILTERS -->
+    <div class="tab-pane fade" id="t-folders">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <div>
+                <h3 class="fb-card-title">Folder Mappings</h3>
+                <p class="fb-card-desc">Define directory routing from the source endpoint to the target endpoint.</p>
+            </div>
+            <button type="button" class="btn-fb secondary sm" data-fb-add-row="folderMaps">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Add Folder Map</span>
+            </button>
+        </div>
+
+        <div id="folderMaps">
+            <% 
+            var maps = model.folderMaps && model.folderMaps.length > 0 ? model.folderMaps : [{ sourcePath: '', destinationPath: '', recursive: false, preserveSubfolders: false }];
+            maps.forEach(function(m, i) { 
+            %>
+                <div class="fb-repeat-row">
+                    <input type="hidden" name="folderMaps[<%= i %>].id" value="<%= m.id || 0 %>" />
+                    <div style="flex: 2;">
+                        <label>Source Path</label>
+                        <div class="input-group">
+                            <input name="folderMaps[<%= i %>].sourcePath" value="<%= m.sourcePath %>" placeholder="e.g. /incoming/daily" class="fb-mono" />
+                            <button type="button" class="btn btn-outline-secondary" data-fb-browse="#sourceEndpointSelect" title="Browse Source Filesystem">Browse</button>
+                        </div>
+                    </div>
+                    <div style="flex: 2;">
+                        <label>Destination Path</label>
+                        <div class="input-group">
+                            <input name="folderMaps[<%= i %>].destinationPath" value="<%= m.destinationPath %>" placeholder="e.g. /archive/daily" class="fb-mono" />
+                            <button type="button" class="btn btn-outline-secondary" data-fb-browse="#destEndpointSelect" title="Browse Destination Filesystem">Browse</button>
+                        </div>
+                    </div>
+                    <div class="checkline" style="flex: 1;">
+                        <input type="checkbox" name="folderMaps[<%= i %>].recursive" value="true" id="rec-<%= i %>" <%= m.recursive ? 'checked' : '' %> />
+                        <label for="rec-<%= i %>">Recursive</label>
+                    </div>
+                    <div class="checkline" style="flex: 1;">
+                        <input type="checkbox" name="folderMaps[<%= i %>].preserveSubfolders" value="true" id="pres-<%= i %>" <%= m.preserveSubfolders ? 'checked' : '' %> />
+                        <label for="pres-<%= i %>">Preserve Tree</label>
+                    </div>
+                    <button type="button" class="btn-fb danger sm fb-remove-row" data-fb-remove-row title="Remove this mapping">Remove</button>
+                </div>
+            <% }); %>
+        </div>
+
+        <template id="folderMaps-template">
+            <div class="fb-repeat-row">
+                <input type="hidden" name="folderMaps[0].id" value="0" />
+                <div style="flex: 2;">
+                    <label>Source Path</label>
+                    <div class="input-group">
+                        <input name="folderMaps[0].sourcePath" placeholder="e.g. /incoming/daily" class="fb-mono" />
+                        <button type="button" class="btn btn-outline-secondary" data-fb-browse="#sourceEndpointSelect">Browse</button>
+                    </div>
+                </div>
+                <div style="flex: 2;">
+                    <label>Destination Path</label>
+                    <div class="input-group">
+                        <input name="folderMaps[0].destinationPath" placeholder="e.g. /archive/daily" class="fb-mono" />
+                        <button type="button" class="btn btn-outline-secondary" data-fb-browse="#destEndpointSelect">Browse</button>
+                    </div>
+                </div>
+                <div class="checkline" style="flex: 1;">
+                    <input type="checkbox" name="folderMaps[0].recursive" value="true" />
+                    <label>Recursive</label>
+                </div>
+                <div class="checkline" style="flex: 1;">
+                    <input type="checkbox" name="folderMaps[0].preserveSubfolders" value="true" />
+                    <label>Preserve Tree</label>
+                </div>
+                <button type="button" class="btn-fb danger sm fb-remove-row" data-fb-remove-row>Remove</button>
+            </div>
+        </template>
+
+        <hr class="my-4" />
+
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <div>
+                <h3 class="fb-card-title">File Discovery Filters</h3>
+                <p class="fb-card-desc">Include or exclude files based on glob patterns, regex, file size limits, or verified MIME types.</p>
+            </div>
+            <button type="button" class="btn-fb secondary sm" data-fb-add-row="filters">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Add Filter Rule</span>
+            </button>
+        </div>
+
+        <div id="filters">
+            <% 
+            var filters = model.filters || [];
+            filters.forEach(function(f, i) { 
+            %>
+                <div class="fb-repeat-row">
+                    <input type="hidden" name="filters[<%= i %>].id" value="<%= f.id || 0 %>" />
+                    <div style="flex: 2;">
+                        <label>Pattern (Glob or Regex)</label>
+                        <input name="filters[<%= i %>].pattern" value="<%= f.pattern %>" class="fb-mono" placeholder="*.csv or ^[A-Z]{3}_" />
+                    </div>
+                    <div class="checkline" style="flex: 1;">
+                        <input type="checkbox" name="filters[<%= i %>].isRegex" value="true" id="reg-<%= i %>" <%= f.isRegex ? 'checked' : '' %> />
+                        <label for="reg-<%= i %>">Regex</label>
+                    </div>
+                    <div class="checkline" style="flex: 1;">
+                        <input type="checkbox" name="filters[<%= i %>].isExclude" value="true" id="exc-<%= i %>" <%= f.isExclude ? 'checked' : '' %> />
+                        <label for="exc-<%= i %>">Exclude</label>
+                    </div>
+                    <div>
+                        <label>Min Size (Bytes)</label>
+                        <input type="number" name="filters[<%= i %>].minSizeBytes" value="<%= f.minSizeBytes || '' %>" placeholder="0" />
+                    </div>
+                    <div>
+                        <label>Max Size (Bytes)</label>
+                        <input type="number" name="filters[<%= i %>].maxSizeBytes" value="<%= f.maxSizeBytes || '' %>" placeholder="Optional" />
+                    </div>
+                    <div>
+                        <label>Allowed MIME Types</label>
+                        <input name="filters[<%= i %>].allowedFileTypes" value="<%= f.allowedFileTypes || '' %>" placeholder="csv,xml,pdf" />
+                    </div>
+                    <button type="button" class="btn-fb danger sm fb-remove-row" data-fb-remove-row>Remove</button>
+                </div>
+            <% }); %>
+        </div>
+
+        <template id="filters-template">
+            <div class="fb-repeat-row">
+                <input type="hidden" name="filters[0].id" value="0" />
+                <div style="flex: 2;">
+                    <label>Pattern (Glob or Regex)</label>
+                    <input name="filters[0].pattern" value="*" class="fb-mono" />
+                </div>
+                <div class="checkline" style="flex: 1;">
+                    <input type="checkbox" name="filters[0].isRegex" value="true" />
+                    <label>Regex</label>
+                </div>
+                <div class="checkline" style="flex: 1;">
+                    <input type="checkbox" name="filters[0].isExclude" value="true" />
+                    <label>Exclude</label>
+                </div>
+                <div>
+                    <label>Min Size (Bytes)</label>
+                    <input type="number" name="filters[0].minSizeBytes" placeholder="0" />
+                </div>
+                <div>
+                    <label>Max Size (Bytes)</label>
+                    <input type="number" name="filters[0].maxSizeBytes" placeholder="Optional" />
+                </div>
+                <div>
+                    <label>Allowed MIME Types</label>
+                    <input name="filters[0].allowedFileTypes" placeholder="csv,xml,pdf" />
+                </div>
+                <button type="button" class="btn-fb danger sm fb-remove-row" data-fb-remove-row>Remove</button>
+            </div>
+        </template>
+    </div>
+
+    <!-- TAB 4: PROCESSING & CRYPTO -->
+    <div class="tab-pane fade" id="t-processing">
+        <div class="row mb-3">
+            <div>
+                <label>Duplicate Handling Policy</label>
+                <select name="duplicatePolicyId">
+                    <option value="1" <%= model.duplicatePolicyId == 1 ? 'selected' : '' %>>Skip (Do not move existing target file)</option>
+                    <option value="2" <%= model.duplicatePolicyId == 2 ? 'selected' : '' %>>Overwrite (Replace target file)</option>
+                    <option value="3" <%= model.duplicatePolicyId == 3 ? 'selected' : '' %>>Version (Append timestamp suffix to target)</option>
+                    <option value="4" <%= model.duplicatePolicyId == 4 ? 'selected' : '' %>>Fail (Halt and record error)</option>
+                </select>
+            </div>
+            <div>
+                <label>Cryptographic Profile</label>
+                <select name="encryptionProfileId">
+                    <option value="">(None - Plaintext)</option>
+                    <% profiles.forEach(function(p) { %>
+                        <option value="<%= p.id %>" <%= model.encryptionProfileId == p.id ? 'selected' : '' %>>
+                            <%= p.name %> (<%= p.encryptionOperationId === 1 ? 'PGP Encrypt' : (p.encryptionOperationId === 2 ? 'PGP Decrypt' : (p.encryptionOperationId === 3 ? 'PGP Sign' : 'AES-GCM')) %>)
+                        </option>
+                    <% }); %>
+                </select>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div>
+                <label>Archive / Compression</label>
+                <select name="compressionOperationId">
+                    <option value="1" <%= model.compressionOperationId == 1 ? 'selected' : '' %>>None</option>
+                    <option value="2" <%= model.compressionOperationId == 2 ? 'selected' : '' %>>Zip Compress on Delivery</option>
+                    <option value="3" <%= model.compressionOperationId == 3 ? 'selected' : '' %>>Unzip Expand on Ingest</option>
+                </select>
+            </div>
+            <div>
+                <label>Dynamic Renaming Pattern</label>
+                <input name="renamePattern" value="<%= model.renamePattern || '' %>" placeholder="{YYYY}{MM}{DD}_{filename}" class="fb-mono" />
+                <div class="text-muted small mt-1">Tokens: <code>{filename}</code>, <code>{YYYY}</code>, <code>{MM}</code>, <code>{DD}</code>, <code>{GUID}</code></div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div>
+                <label>File Stability Hold Time (Seconds)</label>
+                <input type="number" name="stabilitySeconds" value="<%= model.stabilitySeconds || 30 %>" min="0" />
+                <div class="text-muted small mt-1">Ensures the upstream writer has released all file locks before reading.</div>
+            </div>
+            <div>
+                <label>Concurrent Parallel File Streams</label>
+                <input type="number" name="maxParallelFiles" value="<%= model.maxParallelFiles || 4 %>" min="1" max="64" />
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div>
+                <label>Retry Attempts</label>
+                <input type="number" name="maxRetries" value="<%= model.maxRetries || 3 %>" min="0" max="20" />
+            </div>
+            <div>
+                <label>Exponential Backoff Base (Seconds)</label>
+                <input type="number" name="retryBaseSeconds" value="<%= model.retryBaseSeconds || 30 %>" min="5" />
+            </div>
+        </div>
+
+        <fieldset class="mt-3">
+            <legend>Integrity, Antivirus & Operational Guards</legend>
+            <div class="d-flex flex-column gap-2">
+                <div class="checkline">
+                    <input type="checkbox" name="useTempNameOnUpload" value="true" id="useTempNameOnUpload" <%= model.useTempNameOnUpload !== false ? 'checked' : '' %> />
+                    <label for="useTempNameOnUpload"><strong>Atomic Temporary Uploads</strong> (Stage as <code>.fbpart</code> before renaming to prevent partial reads)</label>
+                </div>
+                <div class="checkline">
+                    <input type="checkbox" name="verifyAfterUpload" value="true" id="verifyAfterUpload" <%= model.verifyAfterUpload !== false ? 'checked' : '' %> />
+                    <label for="verifyAfterUpload"><strong>Post-Upload Verification</strong> (Query target endpoint size and existence after transfer)</label>
+                </div>
+                <div class="checkline">
+                    <input type="checkbox" name="virusScanEnabled" value="true" id="virusScanEnabled" <%= model.virusScanEnabled ? 'checked' : '' %> />
+                    <label for="virusScanEnabled"><strong>Antivirus Pre-Flight Scan</strong> (Invoke Microsoft Defender CLI engine on local staging buffer)</label>
+                </div>
+                <div class="checkline">
+                    <input type="checkbox" name="generateChecksumManifest" value="true" id="generateChecksumManifest" <%= model.generateChecksumManifest ? 'checked' : '' %> />
+                    <label for="generateChecksumManifest"><strong>Generate SHA256 Checksum Manifest</strong> (Deposit paired <code>{file}.sha256</code> file)</label>
+                </div>
+                <div class="checkline">
+                    <input type="checkbox" name="validateChecksumManifest" value="true" id="validateChecksumManifest" <%= model.validateChecksumManifest ? 'checked' : '' %> />
+                    <label for="validateChecksumManifest"><strong>Validate Upstream SHA256 Manifest</strong> (Reject files with mismatched checksums)</label>
+                </div>
+                <div class="checkline">
+                    <input type="checkbox" name="useFileWatcher" value="true" id="useFileWatcher" <%= model.useFileWatcher ? 'checked' : '' %> />
+                    <label for="useFileWatcher"><strong>Real-time FileSystemWatcher</strong> (Immediate event triggering for SMB/Local shares)</label>
+                </div>
+            </div>
+        </fieldset>
+    </div>
+
+    <!-- TAB 5: SEMAPHORE & POST-ACTION -->
+    <div class="tab-pane fade" id="t-semaphore">
+        <fieldset class="mb-4">
+            <legend>Semaphore / Handshake Trigger</legend>
+            <p class="fb-card-desc mb-3">Wait for a paired trigger file (e.g. <code>.done</code>, <code>.ready</code>) before initiating transfer.</p>
+            <div class="row mb-3">
+                <div>
+                    <label>Semaphore Trigger Mode</label>
+                    <select name="semaphore.semaphoreModeId">
+                        <option value="1" <%= model.semaphore?.semaphoreModeId == 1 ? 'selected' : '' %>>None (Transfer immediately on discovery)</option>
+                        <option value="2" <%= model.semaphore?.semaphoreModeId == 2 ? 'selected' : '' %>>PerFile (Each payload has its own trigger file)</option>
+                        <option value="3" <%= model.semaphore?.semaphoreModeId == 3 ? 'selected' : '' %>>Batch (A single batch trigger releases all files)</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Trigger Pattern Token</label>
+                    <input name="semaphore.triggerPattern" value="<%= model.semaphore?.triggerPattern || '{filename}.done' %>" class="fb-mono" />
+                </div>
+            </div>
+            <div class="d-flex flex-column gap-2 p-3 bg-light rounded border">
+                <div class="checkline">
+                    <input type="checkbox" name="semaphore.deleteTriggerAfter" value="true" id="delTrig" <%= model.semaphore?.deleteTriggerAfter !== false ? 'checked' : '' %> />
+                    <label for="delTrig">Delete trigger file after payload delivery</label>
+                </div>
+                <div class="checkline">
+                    <input type="checkbox" name="semaphore.transferTrigger" value="true" id="transTrig" <%= model.semaphore?.transferTrigger ? 'checked' : '' %> />
+                    <label for="transTrig">Transfer trigger file to destination endpoint as well</label>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Source Post-Transfer Cleanup</legend>
+            <p class="fb-card-desc mb-3">Governs what happens to the original source files once successfully delivered and verified.</p>
+            <div class="row mb-3">
+                <div>
+                    <label>Action on Source File</label>
+                    <select name="postAction.postActionTypeId">
+                        <option value="1" <%= model.postAction?.postActionTypeId == 1 ? 'selected' : '' %>>None (Leave source file untouched)</option>
+                        <option value="2" <%= model.postAction?.postActionTypeId == 2 ? 'selected' : '' %>>Delete source file immediately</option>
+                        <option value="3" <%= model.postAction?.postActionTypeId == 3 ? 'selected' : '' %>>Archive to subfolder</option>
+                        <option value="4" <%= model.postAction?.postActionTypeId == 4 ? 'selected' : '' %>>Rename with suffix</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Archive Target Directory (if Archive selected)</label>
+                    <input name="postAction.archivePath" value="<%= model.postAction?.archivePath || 'archive' %>" class="fb-mono" />
+                </div>
+            </div>
+            <div>
+                <label>Rename Suffix (if Rename selected)</label>
+                <input name="postAction.renamePattern" value="<%= model.postAction?.renamePattern || '' %>" placeholder="{filename}.processed" class="fb-mono" />
+            </div>
+        </fieldset>
+    </div>
+
+    <!-- TAB 6: NOTIFICATIONS & SLA -->
+    <div class="tab-pane fade" id="t-notify">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <div>
+                <h3 class="fb-card-title">Alert & Notification Rules</h3>
+                <p class="fb-card-desc">Send targeted alerts to operations channels upon transfer failures, SLA breaches, or quarantine events.</p>
+            </div>
+            <button type="button" class="btn-fb secondary sm" data-fb-add-row="notifications">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Add Alert Rule</span>
+            </button>
+        </div>
+
+        <div id="notifications">
+            <% 
+            var notifs = model.notifications || [];
+            notifs.forEach(function(n, i) { 
+            %>
+                <div class="fb-repeat-row">
+                    <input type="hidden" name="notifications[<%= i %>].id" value="<%= n.id || 0 %>" />
+                    <div>
+                        <label>Trigger Event</label>
+                        <select name="notifications[<%= i %>].notificationEventId">
+                            <option value="JobFailed" <%= n.notificationEventId === 'JobFailed' ? 'selected' : '' %>>Job Execution Failed</option>
+                            <option value="FileQuarantined" <%= n.notificationEventId === 'FileQuarantined' ? 'selected' : '' %>>File Held in Quarantine</option>
+                            <option value="SlaBreach" <%= n.notificationEventId === 'SlaBreach' ? 'selected' : '' %>>SLA Delivery Deadline Breached</option>
+                            <option value="JobSucceeded" <%= n.notificationEventId === 'JobSucceeded' ? 'selected' : '' %>>Job Succeeded</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Notification Channel</label>
+                        <select name="notifications[<%= i %>].notificationChannelId">
+                            <option value="Email" <%= n.notificationChannelId === 'Email' ? 'selected' : '' %>>SMTP Email</option>
+                            <option value="Teams" <%= n.notificationChannelId === 'Teams' ? 'selected' : '' %>>Microsoft Teams Webhook</option>
+                        </select>
+                    </div>
+                    <div style="flex: 2;">
+                        <label>Recipient / Webhook URL</label>
+                        <input name="notifications[<%= i %>].target" value="<%= n.target %>" placeholder="ops@agency.gov or https://outlook.office.com/webhook/..." />
+                    </div>
+                    <div class="checkline">
+                        <input type="checkbox" name="notifications[<%= i %>].isEnabled" value="true" id="notif-<%= i %>" <%= n.isEnabled ? 'checked' : '' %> />
+                        <label for="notif-<%= i %>">Enabled</label>
+                    </div>
+                    <button type="button" class="btn-fb danger sm fb-remove-row" data-fb-remove-row>Remove</button>
+                </div>
+            <% }); %>
+        </div>
+
+        <template id="notifications-template">
+            <div class="fb-repeat-row">
+                <input type="hidden" name="notifications[0].id" value="0" />
+                <div>
+                    <label>Trigger Event</label>
+                    <select name="notifications[0].notificationEventId">
+                        <option value="JobFailed">Job Execution Failed</option>
+                        <option value="FileQuarantined">File Held in Quarantine</option>
+                        <option value="SlaBreach">SLA Delivery Deadline Breached</option>
+                        <option value="JobSucceeded">Job Succeeded</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Notification Channel</label>
+                    <select name="notifications[0].notificationChannelId">
+                        <option value="Email">SMTP Email</option>
+                        <option value="Teams">Microsoft Teams Webhook</option>
+                    </select>
+                </div>
+                <div style="flex: 2;">
+                    <label>Recipient / Webhook URL</label>
+                    <input name="notifications[0].target" placeholder="ops@agency.gov or webhook URL" />
+                </div>
+                <div class="checkline">
+                    <input type="checkbox" name="notifications[0].isEnabled" value="true" checked />
+                    <label>Enabled</label>
+                </div>
+                <button type="button" class="btn-fb danger sm fb-remove-row" data-fb-remove-row>Remove</button>
+            </div>
+        </template>
+
+        <hr class="my-4" />
+
+        <fieldset>
+            <legend>Service Level Agreement (SLA) Tracking</legend>
+            <p class="fb-card-desc mb-3">Evaluate daily delivery thresholds and trigger alerts when expected files are missing or late.</p>
+            <div class="row mb-3">
+                <div>
+                    <label>Expected Daily Delivery Deadline</label>
+                    <input type="time" name="sla.expectedByLocalTime" value="<%= model.sla?.expectedByLocalTime || '08:00' %>" />
+                </div>
+                <div>
+                    <label>Target File Pattern Match</label>
+                    <input name="sla.filePattern" value="<%= model.sla?.filePattern || '*' %>" class="fb-mono" />
+                </div>
+                <div>
+                    <label>Minimum Expected File Count</label>
+                    <input type="number" name="sla.minFileCount" value="<%= model.sla?.minFileCount || 1 %>" min="1" />
+                </div>
+            </div>
+            <div class="checkline p-3 bg-light rounded border">
+                <input type="checkbox" name="sla.isEnabled" value="true" id="slaEnabled" <%= model.sla?.isEnabled !== false ? 'checked' : '' %> />
+                <label for="slaEnabled"><strong>Activate SLA Breach Monitoring</strong> (Flag in dashboard and dispatch SLA breach alert if unfulfilled by deadline)</label>
+            </div>
+        </fieldset>
+    </div>
+
+    </div>
+</div>
+
+<!-- Bottom Action Bar -->
+<div class="d-flex align-items-center justify-content-between mt-4">
+    <div class="d-flex align-items-center gap-3">
+        <button type="submit" class="btn-fb primary">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Save Job Configuration</span>
+        </button>
+        <a class="btn-fb secondary" href="/Jobs">Cancel</a>
+    </div>
+
+    <% if (model.id) { %>
+        <div class="d-flex align-items-center gap-2">
+            <button type="submit" formaction="/Jobs/Clone/<%= model.id %>" class="btn-fb secondary">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <span>Clone Job</span>
+            </button>
+            <button type="submit" formaction="/Jobs/Delete/<%= model.id %>" class="btn-fb danger" data-fb-confirm="Are you sure you want to delete or disable this job? This will halt scheduled Quartz triggers.">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span>Delete Job</span>
+            </button>
+        </div>
+    <% } %>
+</div>
+
+</form>
+
+<%- include('../partials/footer') %>

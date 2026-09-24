@@ -1,0 +1,100 @@
+<%- include('../partials/header') %>
+
+<div class="fb-page-header">
+    <div class="fb-page-title-group">
+        <h1>Administrative Audit Trail</h1>
+        <p class="fb-page-subtitle">Immutable compliance log of all configuration mutations, security modifications, and operational commands.</p>
+    </div>
+</div>
+
+<div class="fb-card mb-4 p-3">
+    <form method="get" action="/Audit" class="fb-form d-flex align-items-end gap-3 flex-wrap">
+        <div style="min-width: 240px;">
+            <label>Filter by Entity Type</label>
+            <select name="entity">
+                <option value="">All Entities</option>
+                <% entities.forEach(function(e) { %>
+                    <option value="<%= e %>" <%= selectedEntity === e ? 'selected' : '' %>><%= e %></option>
+                <% }); %>
+            </select>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <button type="submit" class="btn-fb primary">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span>Filter Records</span>
+            </button>
+            <% if (selectedEntity) { %>
+                <a href="/Audit" class="btn-fb secondary">Reset</a>
+            <% } %>
+        </div>
+    </form>
+</div>
+
+<div class="fb-table-container">
+    <table class="fb-table">
+        <thead>
+            <tr>
+                <th>Timestamp (UTC)</th>
+                <th>Target Entity</th>
+                <th>Record ID</th>
+                <th>Operation Action</th>
+                <th>Operator / Principal</th>
+            </tr>
+        </thead>
+        <tbody>
+        <% if (!audits || audits.length === 0) { %>
+            <tr>
+                <td colspan="5" class="fb-empty">
+                    <svg width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="text-muted mb-2">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <div>No audit records found matching criteria.</div>
+                </td>
+            </tr>
+        <% } else { %>
+            <% audits.forEach(function(a) { 
+                var badgeClass = 'warn';
+                if (a.auditActionId === 'Added') badgeClass = 'ok';
+                else if (a.auditActionId === 'Deleted') badgeClass = 'fail';
+            %>
+                <tr>
+                    <td class="fb-mono text-muted small">
+                        <%= new Date(a.changedUtc).toISOString().replace('T', ' ').substring(0, 19) %>
+                    </td>
+                    <td class="fw-semibold text-main">
+                        <span class="fb-proto-tag"><%= a.entityName %></span>
+                    </td>
+                    <td class="fb-mono small">
+                        #<%= a.entityKey %>
+                    </td>
+                    <td>
+                        <span class="fb-badge <%= badgeClass %>"><%= a.auditActionId %></span>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fb-mono small"><%= a.changedBy %></span>
+                        </div>
+                    </td>
+                </tr>
+            <% }); %>
+        <% } %>
+        </tbody>
+    </table>
+
+    <div class="fb-table-footer d-flex align-items-center justify-content-between p-3 border-top bg-light">
+        <span class="text-muted small">Total: <%= total %> audited event(s) &bull; Page <%= page %></span>
+        <div class="d-flex gap-2">
+            <% if (page > 1) { %>
+                <a href="/Audit?entity=<%= selectedEntity || '' %>&page=<%= page - 1 %>" class="btn-fb secondary sm">&larr; Previous</a>
+            <% } %>
+            <% if (total > page * 50) { %>
+                <a href="/Audit?entity=<%= selectedEntity || '' %>&page=<%= page + 1 %>" class="btn-fb secondary sm">Next &rarr;</a>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<%- include('../partials/footer') %>
