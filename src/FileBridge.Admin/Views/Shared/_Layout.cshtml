@@ -1,36 +1,63 @@
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Xsrf
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="csrf-token" content="@Html.AntiForgeryToken()" />
+    @{
+        var antiforgeryTokens = Xsrf.GetAndStoreTokens(Context);
+    }
+    <meta name="csrf-token" content="@antiforgeryTokens.RequestToken" />
     <title>@ViewData["Title"] - FileBridge</title>
     <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
+    @{
+        var currentController = ViewContext.RouteData.Values["controller"] as string ?? "";
+        string NavClass(string controller) => "fb-link" + (string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase) ? " active" : "");
+    }
     <div class="fb-shell">
         <nav class="fb-rail">
             <div class="fb-brand">FileBridge</div>
-            <a class="fb-link" href="/">Dashboard</a>
-            <a class="fb-link" href="/Jobs">Jobs</a>
-            <a class="fb-link" href="/History">History</a>
-            <a class="fb-link" href="/Quarantine">Quarantine</a>
-            <a class="fb-link" href="/Approvals">Approvals</a>
-            <a class="fb-link" href="/Endpoints">Endpoints</a>
-            <a class="fb-link" href="/EncryptionProfiles">Encryption</a>
-            <a class="fb-link" href="/Settings">Settings</a>
-            <a class="fb-link" href="/Audit">Audit</a>
+            <a class="@NavClass("Home")" href="/"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
+            <a class="@NavClass("Jobs")" href="/Jobs"><i class="bi bi-arrow-left-right"></i><span>Jobs</span></a>
+            <a class="@NavClass("ProcessJobs")" href="/ProcessJobs"><i class="bi bi-terminal"></i><span>Batch process jobs</span></a>
+            <a class="@NavClass("History")" href="/History"><i class="bi bi-clock-history"></i><span>History</span></a>
+            <a class="@NavClass("Quarantine")" href="/Quarantine"><i class="bi bi-shield-exclamation"></i><span>Quarantine</span></a>
+            <a class="@NavClass("Approvals")" href="/Approvals"><i class="bi bi-check2-square"></i><span>Approvals</span></a>
+            <a class="@NavClass("Endpoints")" href="/Endpoints"><i class="bi bi-hdd-network"></i><span>Endpoints</span></a>
+            <a class="@NavClass("EncryptionProfiles")" href="/EncryptionProfiles"><i class="bi bi-key"></i><span>Encryption</span></a>
+            <a class="@NavClass("Settings")" href="/Settings"><i class="bi bi-gear"></i><span>Settings</span></a>
+            <a class="@NavClass("Audit")" href="/Audit"><i class="bi bi-journal-text"></i><span>Audit</span></a>
             <div class="fb-rail-spacer"></div>
-            <div class="fb-user">@User.Identity?.Name</div>
+            <div class="fb-user"><i class="bi bi-person-circle"></i><span>@User.Identity?.Name</span></div>
         </nav>
         <main class="fb-main">
-            @if (TempData["Message"] is string msg)
-            {
-                <div class="fb-flash">@msg</div>
-            }
             @RenderBody()
         </main>
+    </div>
+
+    <div class="toast-container position-fixed top-0 end-0 p-3 fb-toast-stack">
+        @if (TempData["Message"] is string msg && !string.IsNullOrWhiteSpace(msg))
+        {
+            var msgType = TempData["MessageType"] as string ?? "success";
+            var msgIcon = msgType switch
+            {
+                "warning" => "bi-exclamation-triangle-fill",
+                "danger" => "bi-x-octagon-fill",
+                "info" => "bi-info-circle-fill",
+                _ => "bi-check-circle-fill"
+            };
+            <div id="fb-toast" class="toast fb-toast @msgType" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="6000">
+                <div class="toast-body d-flex align-items-start gap-2">
+                    <i class="bi @msgIcon"></i>
+                    <div class="flex-grow-1">@msg</div>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        }
     </div>
 
     <div id="fb-modal" class="modal" tabindex="-1" aria-labelledby="fb-modal-title" aria-hidden="true">
@@ -46,7 +73,7 @@
     </div>
 
     <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

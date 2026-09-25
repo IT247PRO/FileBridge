@@ -48,6 +48,10 @@
         throw new Error('No transfer server picked this up. Check that the FileBridge Worker service is running.');
     }
 
+    // Server-rendered flash message (TempData), shown once as a toast.
+    const toastEl = document.getElementById('fb-toast');
+    if (toastEl) bootstrap.Toast.getOrCreateInstance(toastEl).show();
+
     const modalEl = document.getElementById('fb-modal');
     const modal = () => bootstrap.Modal.getOrCreateInstance(modalEl);
     function show(title, ...content) {

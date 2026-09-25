@@ -25,5 +25,6 @@ internal static class LookupModel
         b.Entity<QuarantineStatusLookup>(e => { e.HasKey(x => x.Id); e.Property(x => x.Id).ValueGeneratedNever(); });
         b.Entity<AppRoleLookup>(e => { e.HasKey(x => x.Id); e.Property(x => x.Id).ValueGeneratedNever(); });
         b.Entity<AuditActionLookup>(e => { e.HasKey(x => x.Id); e.Property(x => x.Id).ValueGeneratedNever(); });
+        b.Entity<ProcessRunStatusLookup>(e => { e.HasKey(x => x.Id); e.Property(x => x.Id).ValueGeneratedNever(); });
     }
 }

@@ -14,15 +14,18 @@ namespace FileBridge.Worker.Jobs;
 /// GET /api/v1/requests/{id}. This job claims queued requests (any Worker node, first to update wins because
 /// of the WHERE RequestStatusId = Queued guard) and executes them.
 /// </summary>
-public sealed class RunRequestPollerJob(FileBridgeDbContext db, TransferPipeline pipeline, IEndpointFactory endpoints, ISchedulerFactory schedulerFactory) : IJob
+public sealed class RunRequestPollerJob(FileBridgeDbContext db, TransferPipeline pipeline, ProcessLaunchService launcher, IEndpointFactory endpoints, ISchedulerFactory schedulerFactory) : IJob
 {
     public async Task Execute(IJobExecutionContext context)
     {
         var ct = context.CancellationToken;
         var node = Environment.MachineName;
 
+        // TargetNode is only ever set on KillProcess requests, so this extra condition is a no-op for every
+        // other request type: it just makes a kill wait for the node that actually owns the running process
+        // (Process.Kill(pid) only works on the machine that owns that PID).
         var claimed = await db.RunRequests
-            .Where(r => r.RequestStatusId == RequestStatus.Queued)
+            .Where(r => r.RequestStatusId == RequestStatus.Queued && (r.TargetNode == null || r.TargetNode == node))
             .OrderBy(r => r.Id)
             .Take(10)
             .ExecuteUpdateAsync(s => s
@@ -49,6 +52,8 @@ public sealed class RunRequestPollerJob(FileBridgeDbContext db, TransferPipeline
                     RequestType.Browse => await BrowseAsync(req.EndpointId!.Value, req.Path ?? "", ct),
                     RequestType.ReleaseQuarantine => await ReleaseAsync(req.QuarantineId!.Value, req.RequestedBy, ct),
                     RequestType.DiscardQuarantine => await DiscardAsync(req.QuarantineId!.Value, req.RequestedBy, ct),
+                    RequestType.RunProcessNow => await RunProcessNowAsync(req.ProcessJobId!.Value, req.RequestedBy, ct),
+                    RequestType.KillProcess => await KillProcessAsync(req.ProcessJobId!.Value, req.RequestedBy, ct),
                     _ => throw new NonRetryableException($"Unknown request type {req.RequestTypeId}.")
                 };
             }
@@ -102,5 +107,19 @@ public sealed class RunRequestPollerJob(FileBridgeDbContext db, TransferPipeline
     {
         await pipeline.DiscardQuarantineAsync(quarantineId, by, ct);
         return new { discarded = true };
+    }
+
+    private async Task<object> RunProcessNowAsync(int processJobId, string requestedBy, CancellationToken ct)
+    {
+        var scheduler = await schedulerFactory.GetScheduler(ct);
+        var data = new JobDataMap { ["processJobId"] = processJobId.ToString(), ["triggeredBy"] = $"manual:{requestedBy}", ["manual"] = "true" };
+        await scheduler.TriggerJob(new JobKey($"process-{processJobId}", "process"), data, ct);
+        return new { queued = true };
+    }
+
+    private async Task<object> KillProcessAsync(int processJobId, string requestedBy, CancellationToken ct)
+    {
+        await launcher.KillAsync(processJobId, requestedBy, ct);
+        return new { killed = true };
     }
 }

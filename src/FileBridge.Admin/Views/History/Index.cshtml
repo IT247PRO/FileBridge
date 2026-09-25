@@ -1,6 +1,6 @@
 @model List<TransferHistory>
 @{ ViewData["Title"] = "History"; var jobs = (List<Job>)ViewBag.Jobs; }
-<h1>Transfer history</h1>
+<page-header title="Transfer history"></page-header>
 <form method="get" class="fb-form d-flex gap-3 align-items-end">
     <div><label>Job</label>
         <select name="jobId" asp-items="@(new SelectList(jobs, "Id", "Name", ViewBag.JobId))"><option value="">(all)</option></select>
@@ -12,14 +12,15 @@
     <div><a class="fb-textlink" asp-action="ExportCsv" asp-route-jobId="@ViewBag.JobId" asp-route-status="@ViewBag.Status">Export CSV</a></div>
 </form>
 
-<table class="fb-table mt-3">
+<div class="fb-card mt-3">
+<table class="fb-table">
     <thead><tr><th>Started (UTC)</th><th>Job</th><th>File</th><th>Status</th><th>Size</th><th>Duration</th></tr></thead>
     <tbody>
     @foreach (var h in Model)
     {
         var badge = h.TransferStatusId switch {
             TransferStatus.Succeeded => "ok", TransferStatus.Failed => "fail",
-            TransferStatus.Quarantined => "quarantine", TransferStatus.InProgress => "warn", _ => "muted" };
+            TransferStatus.Quarantined => "quarantine", TransferStatus.InProgress => "running", _ => "muted" };
         <tr>
             <td class="fb-mono">@h.StartedUtc.ToString("u")</td>
             <td>@h.Job?.Name</td>
@@ -31,4 +32,5 @@
     }
     </tbody>
 </table>
-<p class="fb-empty">@ViewBag.Total total row(s), page @ViewBag.Page.</p>
+<page-pager total="@ViewBag.Total" page="@ViewBag.Page" page-size="50"></page-pager>
+</div>

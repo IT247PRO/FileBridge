@@ -1,0 +1,177 @@
+@model ProcessJobEditModel
+@{
+    ViewData["Title"] = Model.Id == 0 ? "Add batch process job" : "Edit batch process job";
+}
+<page-header title="@(ViewData["Title"] as string)" description="Launches an executable on a schedule and tracks it by process ID. It runs as the Worker service's own identity on whichever cluster node picks it up, so the executable must exist at the same path on every Worker node."></page-header>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="fb-card card-fail">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-exclamation-triangle-fill text-danger mt-1"></i>
+            <div>
+                <strong>Please fix the following before saving:</strong>
+                <ul class="mb-0 ps-3 mt-1">
+                    @foreach (var e in ViewData.ModelState.SelectMany(kv => kv.Value!.Errors)) { <li>@e.ErrorMessage</li> }
+                </ul>
+            </div>
+        </div>
+    </div>
+}
+
+<form method="post" asp-action="Save" class="fb-form" id="process-job-form">
+<input type="hidden" asp-for="Id" /><input type="hidden" asp-for="Version" /><input type="hidden" asp-for="RowVersion" />
+
+<ul class="nav nav-pills gap-2 mb-3" role="tablist">
+    <li class="nav-item"><button class="nav-link rounded-pill active" data-bs-toggle="tab" data-bs-target="#t-general" type="button"><i class="bi bi-info-circle me-1"></i>General &amp; command</button></li>
+    <li class="nav-item"><button class="nav-link rounded-pill" data-bs-toggle="tab" data-bs-target="#t-schedule" type="button"><i class="bi bi-clock me-1"></i>Schedule</button></li>
+    <li class="nav-item"><button class="nav-link rounded-pill" data-bs-toggle="tab" data-bs-target="#t-notify" type="button"><i class="bi bi-bell me-1"></i>Notifications</button></li>
+</ul>
+
+<div class="fb-card">
+<div class="tab-content">
+
+<div class="tab-pane fade show active" id="t-general">
+    <p class="tab-intro">What this job is called, what it runs, and how it's allowed to run.</p>
+    <div class="row">
+        <div><label>Name</label><input asp-for="Name" /></div>
+        <div><label>Timeout (seconds)</label><input asp-for="TimeoutSeconds" type="number" />
+            <div class="hint">Optional. If the process hasn't exited by then, it (and any child processes it started) is killed and the run is marked Timed out.</div>
+        </div>
+    </div>
+    <div><label>Description</label><textarea asp-for="Description" rows="2" placeholder="Optional notes for other administrators"></textarea></div>
+    <div class="checkline"><input asp-for="IsEnabled" type="checkbox" /><label asp-for="IsEnabled">Enabled</label></div>
+    <div class="hint mb-3">Unchecked jobs are never scheduled or run, including manually.</div>
+    <div class="checkline"><input asp-for="IsPaused" type="checkbox" /><label asp-for="IsPaused">Paused</label></div>
+    <div class="hint">Scheduled runs are skipped while paused, but you can still use Run now from the list.</div>
+
+    <div class="field-group-title"><i class="bi bi-terminal"></i>Command</div>
+    <div><label>Executable path</label><input asp-for="ExecutablePath" class="fb-mono" placeholder="C:\Apps\tool\run.exe" />
+        <div class="hint">Full path on the Worker node. Must exist at this exact path on every node in the cluster &mdash; Quartz's clustered scheduler decides which node runs a given job, you can't pin it to one.</div>
+    </div>
+    <div><label>Arguments</label><input asp-for="Arguments" class="fb-mono" placeholder="--input {job} --run {date:yyyyMMdd}" />
+        <div class="hint">Optional. Tokens: <code>{job} {node} {guid} {date:yyyyMMdd} {utc:HHmmss}</code>.</div>
+    </div>
+    <div class="row">
+        <div><label>Working directory</label><input asp-for="WorkingDirectory" placeholder="C:\Apps\tool" />
+            <div class="hint">Optional. Defaults to the Worker service's own working directory if left blank.</div>
+        </div>
+        <div><label>Success exit codes</label><input asp-for="SuccessExitCodesCsv" class="fb-mono" placeholder="0" />
+            <div class="hint">Comma-separated. Any exit code not in this list marks the run Failed. Most programs use 0 for success.</div>
+        </div>
+    </div>
+
+    <div class="field-group-title"><i class="bi bi-braces"></i>Environment variables</div>
+    <p class="hint mb-3">Optional. Passed to the process in addition to the Worker service's own environment. Mark a value Secret to store it encrypted and hide it from this form after saving.</p>
+    <div id="envVars">
+        @for (var i = 0; i < Model.EnvironmentVariables.Count; i++)
+        {
+            <div class="fb-repeat-row">
+                <input type="hidden" name="EnvironmentVariables[@i].Id" value="@Model.EnvironmentVariables[i].Id" />
+                <div><label>Name</label><input name="EnvironmentVariables[@i].Key" value="@Model.EnvironmentVariables[i].Key" class="fb-mono" /></div>
+                <div><label>Value</label><input name="EnvironmentVariables[@i].Value" value="@Model.EnvironmentVariables[i].Value" placeholder="@(Model.EnvironmentVariables[i].IsSecret ? "(unchanged - leave blank to keep)" : "")" /></div>
+                <div class="checkline"><input type="checkbox" name="EnvironmentVariables[@i].IsSecret" @(Model.EnvironmentVariables[i].IsSecret ? "checked" : "") /><label>Secret</label></div>
+                <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
+            </div>
+        }
+    </div>
+    <template id="envVars-template">
+        <div class="fb-repeat-row">
+            <input type="hidden" name="EnvironmentVariables[0].Id" value="0" />
+            <div><label>Name</label><input name="EnvironmentVariables[0].Key" class="fb-mono" /></div>
+            <div><label>Value</label><input name="EnvironmentVariables[0].Value" /></div>
+            <div class="checkline"><input type="checkbox" name="EnvironmentVariables[0].IsSecret" /><label>Secret</label></div>
+            <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
+        </div>
+    </template>
+    <button type="button" class="btn-fb secondary" data-fb-add-row="envVars"><i class="bi bi-plus-lg"></i> Add environment variable</button>
+</div>
+
+<div class="tab-pane fade" id="t-schedule">
+    <p class="tab-intro">When this job runs, and the window during which it's allowed to run. Same rules as a file-transfer job's schedule.</p>
+
+    <div class="field-group-title"><i class="bi bi-repeat"></i>When it runs</div>
+    <div class="row">
+        <div>
+            <label>Schedule type</label><select asp-for="ScheduleTypeId" asp-items="Html.GetEnumSelectList<ScheduleType>()"></select>
+            <div class="hint">Cron gives exact times (e.g. "every weekday at 6am"). Interval just repeats every N seconds.</div>
+        </div>
+        <div>
+            <label>Time zone</label>
+            <select asp-for="TimeZoneId">
+                @foreach (var tz in TimeZoneInfo.GetSystemTimeZones())
+                {
+                    <option value="@tz.Id" selected="@(tz.Id == Model.TimeZoneId)">@tz.DisplayName</option>
+                }
+            </select>
+            <div class="hint">Used to evaluate the cron schedule and the active window below.</div>
+        </div>
+    </div>
+    <div class="row">
+        <div>
+            <label>Cron expression (with seconds)</label><input asp-for="CronExpression" placeholder="0 0/5 * * * ?" class="fb-mono" />
+            <div class="hint">Quartz cron format, 6 fields including seconds. "0 0/5 * * * ?" = every 5 minutes. Only used when Schedule type is Cron.</div>
+        </div>
+        <div>
+            <label>Interval (seconds)</label><input asp-for="IntervalSeconds" type="number" />
+            <div class="hint">Minimum 15 seconds. Only used when Schedule type is Interval.</div>
+        </div>
+    </div>
+
+    <div class="field-group-title"><i class="bi bi-sun"></i>Active window (optional)</div>
+    <div class="row">
+        <div><label>Active from</label><input asp-for="ActiveFromTime" type="time" /></div>
+        <div><label>Active to</label><input asp-for="ActiveToTime" type="time" /></div>
+    </div>
+    <div class="hint mb-3">Leave both blank to allow any time of day on an active day. If "from" is later than "to" (e.g. 22:00 &rarr; 04:00), the window wraps past midnight.</div>
+    <label>Active days</label>
+    <div class="row">
+        @foreach (var d in Enum.GetValues<DayOfWeek>())
+        {
+            <div class="checkline"><input type="checkbox" name="ActiveDays" value="@d" checked="@Model.ActiveDays.Contains(d)" /><label>@d.ToString()[..3]</label></div>
+        }
+    </div>
+    <div class="hint">Days this job is allowed to run at all. A manual Run now still bypasses both the active window and this day restriction; only the scheduler respects them.</div>
+</div>
+
+<div class="tab-pane fade" id="t-notify">
+    <p class="tab-intro">Who to alert when a run finishes.</p>
+    <div class="field-group-title"><i class="bi bi-bell"></i>Notifications</div>
+    <p class="hint mb-3">Fires for this batch process job's Succeeded/Failed/Timed out runs. Unlike file-transfer jobs, there's no "applies to every batch process job" global rule yet &mdash; add one here for each job that needs it.</p>
+    <div id="notifications">
+        @for (var i = 0; i < Model.Notifications.Count; i++)
+        {
+            <div class="fb-repeat-row">
+                <input type="hidden" name="Notifications[@i].Id" value="@Model.Notifications[i].Id" />
+                <div><label>Event</label><select name="Notifications[@i].NotificationEventId" asp-items="Html.GetEnumSelectList<NotificationEvent>()"></select></div>
+                <div><label>Channel</label><select name="Notifications[@i].NotificationChannelId" asp-items="Html.GetEnumSelectList<NotificationChannel>()"></select></div>
+                <div><label>Target</label><input name="Notifications[@i].Target" value="@Model.Notifications[i].Target" placeholder="ops@agency.gov or webhook URL" /></div>
+                <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
+            </div>
+        }
+    </div>
+    <template id="notifications-template">
+        <div class="fb-repeat-row">
+            <input type="hidden" name="Notifications[0].Id" value="0" />
+            <div><label>Event</label><select name="Notifications[0].NotificationEventId"><option value="JobFailed">JobFailed</option><option value="JobSucceeded">JobSucceeded</option></select></div>
+            <div><label>Channel</label><select name="Notifications[0].NotificationChannelId"><option value="Email">Email</option><option value="Teams">Teams</option></select></div>
+            <div><label>Target</label><input name="Notifications[0].Target" placeholder="ops@agency.gov or webhook URL" /></div>
+            <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
+        </div>
+    </template>
+    <button type="button" class="btn-fb secondary" data-fb-add-row="notifications"><i class="bi bi-plus-lg"></i> Add notification rule</button>
+    <p class="hint mt-2">Target is an email address (or several separated by <code>;</code>) for the Email channel, or a webhook URL for Teams. A Timed out run fires the same JobFailed notification as any other failure.</p>
+</div>
+
+</div>
+</div>
+
+<div class="divider-top mt-4 pt-3">
+    <button type="submit" class="btn-fb">Save</button>
+    <a class="fb-textlink" asp-action="Index">Cancel</a>
+    @if (Model.Id != 0)
+    {
+        <form method="post" asp-action="Delete" asp-route-id="@Model.Id" class="d-inline ms-3" data-fb-confirm="Delete this batch process job?"><button type="submit" class="btn-fb danger">Delete</button></form>
+    }
+</div>
+</form>

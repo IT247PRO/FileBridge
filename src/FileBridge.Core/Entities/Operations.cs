@@ -64,14 +64,39 @@ public sealed class RunRequest : IOperationalEntity
     public int? JobId { get; set; }
     public int? EndpointId { get; set; }
     public int? QuarantineId { get; set; }
+    public int? ProcessJobId { get; set; }
     public string? Path { get; set; }
     public RequestStatus RequestStatusId { get; set; } = RequestStatus.Queued;
     public string RequestedBy { get; set; } = "";
     public DateTime RequestedUtc { get; set; }
     public string? PickedBy { get; set; }
+    /// <summary>KillProcess only: the Worker node that owns the running process. Only that node may claim the request (Process.Kill needs to run on the same machine).</summary>
+    public string? TargetNode { get; set; }
     public DateTime? StartedUtc { get; set; }
     public DateTime? CompletedUtc { get; set; }
     public string? ResultJson { get; set; }
+}
+
+/// <summary>One launched-process run. Pid alone is not a safe identity (PIDs get reused); ProcessStartTimeUtc must be
+/// re-checked against the live process before treating a PID as "ours" for kill or reconciliation.</summary>
+public sealed class ProcessRunHistory : IOperationalEntity
+{
+    public long Id { get; set; }
+    public int ProcessJobId { get; set; }
+    public ProcessJob? ProcessJob { get; set; }
+    public Guid RunId { get; set; }
+    public string TriggeredBy { get; set; } = "";
+    public string NodeName { get; set; } = "";
+    public int? Pid { get; set; }
+    public DateTime? ProcessStartTimeUtc { get; set; }
+    public ProcessRunStatus StatusId { get; set; } = ProcessRunStatus.Starting;
+    public DateTime StartedUtc { get; set; }
+    public DateTime? CompletedUtc { get; set; }
+    public long? DurationMs { get; set; }
+    public int? ExitCode { get; set; }
+    public string? StdOutTail { get; set; }
+    public string? StdErrTail { get; set; }
+    public string? ErrorMessage { get; set; }
 }
 
 public sealed class NodeHeartbeat : IOperationalEntity

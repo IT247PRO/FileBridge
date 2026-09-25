@@ -14,12 +14,18 @@ namespace FileBridge.Infrastructure.Notifications;
 public sealed class Notifier(FileBridgeDbContext db, ISecretProtector secrets, IHttpClientFactory http,
     IOptions<NotificationOptions> options, ILogger<Notifier> log) : INotifier
 {
-    public async Task NotifyAsync(NotificationEvent evt, int? jobId, string subject, string body, CancellationToken ct)
+    public async Task NotifyAsync(NotificationEvent evt, int? jobId, string subject, string body, CancellationToken ct, int? processJobId = null)
     {
+        // Process-job rules are matched exactly (no "global" row for them, unlike transfer jobs' JobId == null),
+        // since a NotificationRule with both owner columns null already means "every transfer job" and reusing
+        // that for process jobs too would silently change what existing global transfer-job rules fire for.
         var rules = await db.NotificationRules.AsNoTracking()
-            .Where(r => r.IsEnabled && r.NotificationEventId == evt && (r.JobId == null || r.JobId == jobId))
+            .Where(r => r.IsEnabled && r.NotificationEventId == evt &&
+                (processJobId != null ? r.ProcessJobId == processJobId : (r.JobId == null || r.JobId == jobId)))
             .ToListAsync(ct);
-        var link = $"{options.Value.AdminUrl.TrimEnd('/')}/{(jobId is null ? "" : $"History?jobId={jobId}")}";
+        var link = processJobId is not null
+            ? $"{options.Value.AdminUrl.TrimEnd('/')}/ProcessJobs/History?id={processJobId}"
+            : $"{options.Value.AdminUrl.TrimEnd('/')}/{(jobId is null ? "" : $"History?jobId={jobId}")}";
 
         foreach (var rule in rules)
         {

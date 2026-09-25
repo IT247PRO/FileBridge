@@ -45,7 +45,8 @@ public interface IAntivirusScanner { Task<ScanResult> ScanAsync(string path, Can
 
 public interface INotifier
 {
-    Task NotifyAsync(NotificationEvent evt, int? jobId, string subject, string body, CancellationToken ct);
+    /// <summary>processJobId identifies a process-job event instead of a transfer-job one; exactly one of jobId/processJobId should be set.</summary>
+    Task NotifyAsync(NotificationEvent evt, int? jobId, string subject, string body, CancellationToken ct, int? processJobId = null);
 }
 
 /// <summary>File failed a content check (AV, type, checksum). Held for review, never retried.</summary>

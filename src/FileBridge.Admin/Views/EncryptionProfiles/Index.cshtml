@@ -1,6 +1,8 @@
 @model List<EncryptionProfile>
 @{ ViewData["Title"] = "Encryption profiles"; }
-<h1>Encryption profiles</h1>
+<page-header title="Encryption profiles">
+    <a class="btn-fb" asp-action="Create"><i class="bi bi-plus-lg"></i> Add profile</a>
+</page-header>
 @if (TempData["GeneratedAesKey"] is string key)
 {
     <div class="fb-card card-warn">
@@ -8,7 +10,7 @@
         <div class="fb-mono break-all mt-2">@key</div>
     </div>
 }
-<p><a class="btn-fb" asp-action="Create">Add profile</a></p>
+<div class="fb-card">
 <table class="fb-table">
     <thead><tr><th>Name</th><th>Operation</th><th></th></tr></thead>
     <tbody>
@@ -18,3 +20,4 @@
     }
     </tbody>
 </table>
+</div>

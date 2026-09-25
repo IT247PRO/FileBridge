@@ -1,12 +1,17 @@
 @model List<Job>
-@{ ViewData["Title"] = "Jobs"; }
-<h1>Jobs</h1>
-<p><a class="btn-fb" asp-action="Create">Add job</a>
-<form method="post" asp-action="Import" enctype="multipart/form-data" class="d-inline-block ms-2">
-    <input type="file" name="file" accept=".json" /> <button type="submit" class="btn-fb secondary">Import</button>
-</form></p>
+@{
+    ViewData["Title"] = "Jobs";
+    var health = (Dictionary<int, (string Label, string Badge)>)ViewBag.JobHealth;
+}
+<page-header title="Jobs">
+    <a class="btn-fb" asp-action="Create"><i class="bi bi-plus-lg"></i> Add job</a>
+    <form method="post" asp-action="Import" enctype="multipart/form-data" class="d-inline-flex gap-2 align-items-center">
+        <input type="file" name="file" accept=".json" /> <button type="submit" class="btn-fb secondary">Import</button>
+    </form>
+</page-header>
+<div class="fb-card">
 <table class="fb-table">
-    <thead><tr><th>Job</th><th>Route</th><th>Schedule</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Job</th><th>Route</th><th>Schedule</th><th>Status</th><th>Health</th><th></th></tr></thead>
     <tbody>
     @foreach (var j in Model)
     {
@@ -26,14 +31,39 @@
                 else { <span class="fb-badge ok">Active</span> }
             </td>
             <td>
-                <button class="btn-fb secondary" data-fb-action="post-poll" data-fb-url="/Jobs/DryRun/@j.Id" data-fb-result="dr-@j.Id">Dry run</button>
-                <button class="btn-fb secondary" data-fb-action="post-poll" data-fb-url="/Jobs/RunNow/@j.Id" data-fb-result="dr-@j.Id">Run now</button>
-                <form method="post" asp-action="TogglePause" asp-route-id="@j.Id" class="d-inline"><button type="submit" class="btn-fb secondary">@(j.IsPaused ? "Resume" : "Pause")</button></form>
-                <a class="fb-textlink" asp-action="Edit" asp-route-id="@j.Id">Edit</a>
-                <a class="fb-textlink" asp-action="Versions" asp-route-id="@j.Id">History</a>
-                <div id="dr-@j.Id" class="mt-2"></div>
+                @{ var h = health[j.Id]; }
+                <span class="fb-badge @h.Badge" title="Based on the most recently completed run">@h.Label</span>
+            </td>
+            <td class="text-nowrap">
+                <div class="d-flex gap-1 flex-wrap align-items-center">
+                    <button class="btn-fb secondary" data-fb-action data-fb-url="/Jobs/DryRun/@j.Id" data-fb-title="Dry run: @j.Name" data-fb-render="dryrun">Dry run</button>
+                    <button class="btn-fb secondary" data-fb-action data-fb-url="/Jobs/RunNow/@j.Id" data-fb-title="Run now: @j.Name">Run now</button>
+                    <form method="post" asp-action="TogglePause" asp-route-id="@j.Id" class="d-inline"><button type="submit" class="btn-fb secondary">@(j.IsPaused ? "Resume" : "Pause")</button></form>
+                    <a class="fb-textlink" asp-action="Edit" asp-route-id="@j.Id">Edit</a>
+                    <a class="fb-textlink" asp-action="Versions" asp-route-id="@j.Id">History</a>
+                    <div class="dropdown d-inline-block">
+                        <button class="btn-fb secondary px-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions for @j.Name">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" asp-action="Export" asp-route-id="@j.Id"><i class="bi bi-download me-1"></i>Export JSON</a></li>
+                            <li>
+                                <form method="post" asp-action="Clone" asp-route-id="@j.Id">
+                                    <button type="submit" class="dropdown-item"><i class="bi bi-copy me-1"></i>Clone</button>
+                                </form>
+                            </li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li>
+                                <form method="post" asp-action="Delete" asp-route-id="@j.Id" data-fb-confirm="Delete '@j.Name'?">
+                                    <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-1"></i>Delete</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </td>
         </tr>
     }
     </tbody>
 </table>
+</div>

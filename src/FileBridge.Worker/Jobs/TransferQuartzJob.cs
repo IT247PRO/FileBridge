@@ -36,7 +36,7 @@ public sealed class TransferQuartzJob(FileBridgeDbContext db, TransferPipeline p
         if (!manual)
         {
             var local = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, ScheduleWindow.FindZone(job.TimeZoneId)).DateTime;
-            if (!ScheduleWindow.IsWithinActiveWindow(job, local))
+            if (!ScheduleWindow.IsWithinActiveWindow(job.ActiveDaysMask, job.ActiveFromTime, job.ActiveToTime, local))
             {
                 log.LogDebug("Job {JobId} is outside its active window; skipping", jobId);
                 return;

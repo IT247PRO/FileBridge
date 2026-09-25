@@ -1,23 +1,30 @@
 @model List<Quarantine>
 @{ ViewData["Title"] = "Quarantine"; }
-<h1>Quarantine</h1>
-@if (Model.Count == 0) { <div class="fb-empty">Nothing held for review.</div> }
-<table class="fb-table">
-    <thead><tr><th>Held (UTC)</th><th>Job</th><th>File</th><th>Reason</th><th></th></tr></thead>
-    <tbody>
-    @foreach (var q in Model)
-    {
-        <tr>
-            <td class="fb-mono">@q.CreatedUtc.ToString("u")</td>
-            <td>@q.Job?.Name</td>
-            <td>@System.IO.Path.GetFileName(q.OriginalPath)</td>
-            <td>@q.Reason</td>
-            <td>
-                <button class="btn-fb secondary" data-fb-action="post-poll" data-fb-url="/Quarantine/Release/@q.Id" data-fb-result="q-@q.Id">Release</button>
-                <button class="btn-fb danger" data-fb-action="post-poll" data-fb-url="/Quarantine/Discard/@q.Id" data-fb-result="q-@q.Id">Discard</button>
-                <div id="q-@q.Id" class="mt-2"></div>
-            </td>
-        </tr>
-    }
-    </tbody>
-</table>
+<page-header title="Quarantine"></page-header>
+@if (Model.Count == 0)
+{
+    <div class="fb-empty">Nothing held for review.</div>
+}
+else
+{
+    <div class="fb-card">
+    <table class="fb-table">
+        <thead><tr><th>Held (UTC)</th><th>Job</th><th>File</th><th>Reason</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var q in Model)
+        {
+            <tr>
+                <td class="fb-mono">@q.CreatedUtc.ToString("u")</td>
+                <td>@q.Job?.Name</td>
+                <td>@System.IO.Path.GetFileName(q.OriginalPath)</td>
+                <td>@q.Reason</td>
+                <td class="text-nowrap">
+                    <button class="btn-fb secondary" data-fb-action data-fb-url="/Quarantine/Release/@q.Id" data-fb-title="Release quarantined file" data-fb-confirm="Release this file back into the normal transfer flow?">Release</button>
+                    <button class="btn-fb danger" data-fb-action data-fb-url="/Quarantine/Discard/@q.Id" data-fb-title="Discard quarantined file" data-fb-confirm="Permanently delete this held file? This cannot be undone.">Discard</button>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    </div>
+}

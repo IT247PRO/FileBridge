@@ -14,8 +14,10 @@ public enum ScheduleType { Cron = 1, Interval = 2 }
 public enum NotificationChannel { Email = 1, Teams = 2 }
 public enum NotificationEvent { JobFailed = 1, FileQuarantined = 2, SlaBreach = 3, JobSucceeded = 4, ApprovalRequested = 5 }
 public enum ApprovalStatus { Pending = 1, Approved = 2, Rejected = 3 }
-public enum RequestType { RunNow = 1, DryRun = 2, TestConnection = 3, Browse = 4, ReleaseQuarantine = 5, DiscardQuarantine = 6 }
+public enum RequestType { RunNow = 1, DryRun = 2, TestConnection = 3, Browse = 4, ReleaseQuarantine = 5, DiscardQuarantine = 6, RunProcessNow = 7, KillProcess = 8 }
 public enum RequestStatus { Queued = 1, Running = 2, Completed = 3, Failed = 4 }
 public enum QuarantineStatus { Held = 1, Released = 2, Discarded = 3 }
 public enum AppRole { Viewer = 1, Operator = 2, Admin = 3, Approver = 4 }
 public enum AuditAction { Added = 1, Modified = 2, Deleted = 3 }
+/// <summary>Lifecycle of one launched-process run. Lost = the Worker restarted mid-run and the watchdog could no longer confirm the PID was still ours.</summary>
+public enum ProcessRunStatus { Starting = 1, Running = 2, Succeeded = 3, Failed = 4, Killed = 5, TimedOut = 6, Lost = 7 }

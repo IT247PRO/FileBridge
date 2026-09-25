@@ -4,69 +4,109 @@
     var endpoints = (List<Endpoint>)ViewBag.Endpoints;
     var profiles = (List<EncryptionProfile>)ViewBag.EncryptionProfiles;
 }
-<h1>@ViewData["Title"]</h1>
+<page-header title="@(ViewData["Title"] as string)" description="A job connects a source and destination endpoint, on a schedule, with the file-selection, processing, and alerting rules below. Work through the tabs in order — each builds on the one before it."></page-header>
 
 @if (!ViewData.ModelState.IsValid)
 {
     <div class="fb-card card-fail">
-        <ul class="m-0 ps-3">
-            @foreach (var e in ViewData.ModelState.SelectMany(kv => kv.Value!.Errors)) { <li>@e.ErrorMessage</li> }
-        </ul>
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-exclamation-triangle-fill text-danger mt-1"></i>
+            <div>
+                <strong>Please fix the following before saving:</strong>
+                <ul class="mb-0 ps-3 mt-1">
+                    @foreach (var e in ViewData.ModelState.SelectMany(kv => kv.Value!.Errors)) { <li>@e.ErrorMessage</li> }
+                </ul>
+            </div>
+        </div>
     </div>
 }
 
 <form method="post" asp-action="Save" class="fb-form" id="job-form">
 <input type="hidden" asp-for="Id" /><input type="hidden" asp-for="Version" /><input type="hidden" asp-for="RowVersion" />
 
-<ul class="nav nav-tabs" role="tablist">
-    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#t-general" type="button">General</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-schedule" type="button">Schedule</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-folders" type="button">Folders &amp; filters</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-processing" type="button">Processing</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-semaphore" type="button">Semaphore &amp; post-action</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-notify" type="button">Notifications &amp; SLA</button></li>
+<ul class="nav nav-pills gap-2 mb-3" role="tablist">
+    <li class="nav-item"><button class="nav-link rounded-pill active" data-bs-toggle="tab" data-bs-target="#t-general" type="button"><i class="bi bi-info-circle me-1"></i>General</button></li>
+    <li class="nav-item"><button class="nav-link rounded-pill" data-bs-toggle="tab" data-bs-target="#t-schedule" type="button"><i class="bi bi-clock me-1"></i>Schedule</button></li>
+    <li class="nav-item"><button class="nav-link rounded-pill" data-bs-toggle="tab" data-bs-target="#t-folders" type="button"><i class="bi bi-folder me-1"></i>Folders &amp; filters</button></li>
+    <li class="nav-item"><button class="nav-link rounded-pill" data-bs-toggle="tab" data-bs-target="#t-processing" type="button"><i class="bi bi-gear me-1"></i>Processing</button></li>
+    <li class="nav-item"><button class="nav-link rounded-pill" data-bs-toggle="tab" data-bs-target="#t-semaphore" type="button"><i class="bi bi-flag me-1"></i>Semaphore &amp; post-action</button></li>
+    <li class="nav-item"><button class="nav-link rounded-pill" data-bs-toggle="tab" data-bs-target="#t-notify" type="button"><i class="bi bi-bell me-1"></i>Notifications &amp; SLA</button></li>
 </ul>
 
-<div class="tab-content pt-3">
+<div class="fb-card">
+<div class="tab-content">
 
 <div class="tab-pane fade show active" id="t-general">
+    <p class="tab-intro">The basics: what this job is called, which direction files move, and which two endpoints it connects.</p>
     <div class="row">
-        <div><label>Name</label><input asp-for="Name" /></div>
-        <div><label>Direction</label><select asp-for="TransferDirectionId" asp-items="Html.GetEnumSelectList<TransferDirection>()"></select></div>
-    </div>
-    <div><label>Description</label><textarea asp-for="Description" rows="2"></textarea></div>
-    <div class="row">
-        <div><label>Source endpoint</label>
-            <select asp-for="SourceEndpointId" asp-items="@(new SelectList(endpoints, "Id", "Name"))"></select>
+        <div>
+            <label>Name</label><input asp-for="Name" />
         </div>
-        <div><label>Destination endpoint</label>
+        <div>
+            <label>Direction</label><select asp-for="TransferDirectionId" asp-items="Html.GetEnumSelectList<TransferDirection>()"></select>
+            <div class="hint">Inbound pulls files from the source into this system. Outbound pushes files out to a partner.</div>
+        </div>
+    </div>
+    <div><label>Description</label><textarea asp-for="Description" rows="2" placeholder="Optional notes for other administrators"></textarea></div>
+    <div class="row">
+        <div>
+            <label>Source endpoint</label>
+            <select asp-for="SourceEndpointId" asp-items="@(new SelectList(endpoints, "Id", "Name"))"></select>
+            <div class="hint">Where files are read from.</div>
+        </div>
+        <div>
+            <label>Destination endpoint</label>
             <select asp-for="DestinationEndpointId" asp-items="@(new SelectList(endpoints, "Id", "Name"))"></select>
+            <div class="hint">Where files are delivered to.</div>
         </div>
     </div>
     <div class="checkline"><input asp-for="IsEnabled" type="checkbox" /><label asp-for="IsEnabled">Enabled</label></div>
+    <div class="hint mb-3">Unchecked jobs are never scheduled or run, including manually.</div>
     <div class="checkline"><input asp-for="IsPaused" type="checkbox" /><label asp-for="IsPaused">Paused</label></div>
+    <div class="hint">Scheduled runs are skipped while paused, but you can still use Run Now / Dry run from the Jobs list.</div>
 </div>
 
 <div class="tab-pane fade" id="t-schedule">
+    <p class="tab-intro">When this job runs, and the window during which it's allowed to run.</p>
+
+    <div class="field-group-title"><i class="bi bi-repeat"></i>When it runs</div>
     <div class="row">
-        <div><label>Schedule type</label><select asp-for="ScheduleTypeId" asp-items="Html.GetEnumSelectList<ScheduleType>()"></select></div>
-        <div><label>Time zone</label>
+        <div>
+            <label>Schedule type</label><select asp-for="ScheduleTypeId" asp-items="Html.GetEnumSelectList<ScheduleType>()"></select>
+            <div class="hint">Cron gives exact times (e.g. "every weekday at 6am"). Interval just repeats every N seconds.</div>
+        </div>
+        <div>
+            <label>Time zone</label>
             <select asp-for="TimeZoneId">
                 @foreach (var tz in (IEnumerable<TimeZoneInfo>)ViewBag.TimeZones)
                 {
                     <option value="@tz.Id" selected="@(tz.Id == Model.TimeZoneId)">@tz.DisplayName</option>
                 }
             </select>
+            <div class="hint">Used to evaluate the cron schedule and the active window below.</div>
         </div>
     </div>
     <div class="row">
-        <div><label>Cron expression (with seconds)</label><input asp-for="CronExpression" placeholder="0 0/5 * * * ?" class="fb-mono" /></div>
-        <div><label>Interval (seconds)</label><input asp-for="IntervalSeconds" type="number" /></div>
+        <div>
+            <label>Cron expression (with seconds)</label><input asp-for="CronExpression" placeholder="0 0/5 * * * ?" class="fb-mono" />
+            <div class="hint">Quartz cron format, 6 fields including seconds. "0 0/5 * * * ?" = every 5 minutes. Only used when Schedule type is Cron.</div>
+        </div>
+        <div>
+            <label>Interval (seconds)</label><input asp-for="IntervalSeconds" type="number" />
+            <div class="hint">How often to check for new files. Minimum 15 seconds. Only used when Schedule type is Interval.</div>
+        </div>
     </div>
+
+    <div class="field-group-title"><i class="bi bi-sun"></i>Active window (optional)</div>
     <div class="row">
-        <div><label>Active from</label><input asp-for="ActiveFromTime" type="time" /></div>
-        <div><label>Active to</label><input asp-for="ActiveToTime" type="time" /></div>
+        <div>
+            <label>Active from</label><input asp-for="ActiveFromTime" type="time" />
+        </div>
+        <div>
+            <label>Active to</label><input asp-for="ActiveToTime" type="time" />
+        </div>
     </div>
+    <div class="hint mb-3">Leave both blank to allow any time of day on an active day. If "from" is later than "to" (e.g. 22:00 &rarr; 04:00), the window wraps past midnight.</div>
     <label>Active days</label>
     <div class="row">
         @foreach (var d in Enum.GetValues<DayOfWeek>())
@@ -74,10 +114,14 @@
             <div class="checkline"><input type="checkbox" name="ActiveDays" value="@d" checked="@Model.ActiveDays.Contains(d)" /><label>@d.ToString()[..3]</label></div>
         }
     </div>
+    <div class="hint">Days this job is allowed to run at all. A manual Run Now still bypasses both the active window and this day restriction; only the scheduler respects them.</div>
 </div>
 
 <div class="tab-pane fade" id="t-folders">
-    <h2>Folder maps</h2>
+    <p class="tab-intro">Which folders to move files between, and which files within them actually qualify for transfer.</p>
+
+    <div class="field-group-title"><i class="bi bi-signpost-split"></i>Folder maps</div>
+    <p class="hint mb-3">At least one is required. Paths are relative to each endpoint's own base path, so use forward slashes and don't repeat it here.</p>
     <div id="folderMaps">
         @for (var i = 0; i < Model.FolderMaps.Count; i++)
         {
@@ -101,9 +145,13 @@
             <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
         </div>
     </template>
-    <button type="button" class="btn-fb secondary" data-fb-add-row="folderMaps">Add folder map</button>
+    <button type="button" class="btn-fb secondary" data-fb-add-row="folderMaps"><i class="bi bi-plus-lg"></i> Add folder map</button>
 
-    <h2 class="mt-4">Filters</h2>
+    <div class="field-group-title"><i class="bi bi-funnel"></i>Filters</div>
+    <p class="hint mb-3">
+        Optional. With no filters, every file is picked up. Exclude filters always win over include filters, even if both match the same file.
+        A file's real content is checked against Allowed types (not just its extension), so a renamed executable can't slip through.
+    </p>
     <div id="filters">
         @for (var i = 0; i < Model.Filters.Count; i++)
         {
@@ -127,62 +175,119 @@
             <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
         </div>
     </template>
-    <button type="button" class="btn-fb secondary" data-fb-add-row="filters">Add filter</button>
+    <button type="button" class="btn-fb secondary" data-fb-add-row="filters"><i class="bi bi-plus-lg"></i> Add filter</button>
+    <p class="hint mt-2">Pattern is a glob (<code>*.csv</code>, <code>**/*.csv</code>) unless Regex is checked. Allowed types is a comma list, e.g. <code>pdf,zip,csv</code> &mdash; "text" also allows csv/xml/json.</p>
 </div>
 
 <div class="tab-pane fade" id="t-processing">
+    <p class="tab-intro">How files are actually moved: throughput, retry behavior, what happens to name clashes, and optional compression/encryption/safety checks along the way.</p>
+
+    <div class="field-group-title"><i class="bi bi-speedometer2"></i>Throughput</div>
     <div class="row">
-        <div><label>Stability window (seconds)</label><input asp-for="StabilitySeconds" type="number" /></div>
-        <div><label>Max parallel files</label><input asp-for="MaxParallelFiles" type="number" /></div>
+        <div>
+            <label>Stability window (seconds)</label><input asp-for="StabilitySeconds" type="number" />
+            <div class="hint">Files modified more recently than this are skipped for now, so a file still being written isn't read mid-write.</div>
+        </div>
+        <div>
+            <label>Max parallel files</label><input asp-for="MaxParallelFiles" type="number" />
+            <div class="hint">How many files transfer at once for this job (1&ndash;16).</div>
+        </div>
     </div>
+
+    <div class="field-group-title"><i class="bi bi-arrow-repeat"></i>Retries</div>
     <div class="row">
-        <div><label>Max retries</label><input asp-for="MaxRetries" type="number" /></div>
-        <div><label>Retry base (seconds)</label><input asp-for="RetryBaseSeconds" type="number" /></div>
+        <div>
+            <label>Max retries</label><input asp-for="MaxRetries" type="number" />
+            <div class="hint">How many times to retry a failed file before giving up and marking it Failed.</div>
+        </div>
+        <div>
+            <label>Retry base (seconds)</label><input asp-for="RetryBaseSeconds" type="number" />
+            <div class="hint">Delay before the first retry. Each later attempt roughly doubles it, capped at 15 minutes.</div>
+        </div>
     </div>
+
+    <div class="field-group-title"><i class="bi bi-files"></i>Duplicates &amp; compression</div>
     <div class="row">
-        <div><label>Duplicate policy</label><select asp-for="DuplicatePolicyId" asp-items="Html.GetEnumSelectList<DuplicatePolicy>()"></select></div>
-        <div><label>Compression</label><select asp-for="CompressionOperationId" asp-items="Html.GetEnumSelectList<CompressionOperation>()"></select></div>
+        <div>
+            <label>Duplicate policy</label><select asp-for="DuplicatePolicyId" asp-items="Html.GetEnumSelectList<DuplicatePolicy>()"></select>
+            <div class="hint">What to do when a file with the same name already exists at the destination.</div>
+        </div>
+        <div>
+            <label>Compression</label><select asp-for="CompressionOperationId" asp-items="Html.GetEnumSelectList<CompressionOperation>()"></select>
+            <div class="hint">Zip files before delivery, or unzip incoming archives (must contain exactly one file).</div>
+        </div>
     </div>
-    <div><label>Encryption profile</label>
+    <div>
+        <label>Encryption profile</label>
         <select asp-for="EncryptionProfileId" asp-items="@(new SelectList(profiles, "Id", "Name"))"><option value="">(none)</option></select>
+        <div class="hint">Encrypt files on the way out, or decrypt files coming in &mdash; set on the Encryption Profiles page.</div>
     </div>
-    <div><label>Rename pattern</label><input asp-for="RenamePattern" placeholder="{name}_{date:yyyyMMdd}{ext}" class="fb-mono" /></div>
+    <div>
+        <label>Rename pattern</label><input asp-for="RenamePattern" placeholder="{name}_{date:yyyyMMdd}{ext}" class="fb-mono" />
+        <div class="hint">Optional. Tokens: <code>{filename} {name} {ext} {job} {node} {guid} {date:yyyyMMdd} {utc:HHmmss}</code>. Leave blank to keep the original name.</div>
+    </div>
+
+    <div class="field-group-title"><i class="bi bi-shield-check"></i>Safety checks</div>
     <div class="row">
         <div class="checkline"><input asp-for="UseTempNameOnUpload" type="checkbox" /><label asp-for="UseTempNameOnUpload">Upload as temp name first</label></div>
         <div class="checkline"><input asp-for="VerifyAfterUpload" type="checkbox" /><label asp-for="VerifyAfterUpload">Verify size after upload</label></div>
     </div>
+    <div class="hint mb-3">Recommended: uploads under a hidden temp name and renames on completion, so downstream systems never see a partial file; verify confirms the delivered size matches before it's marked done.</div>
     <div class="row">
         <div class="checkline"><input asp-for="VirusScanEnabled" type="checkbox" /><label asp-for="VirusScanEnabled">Virus scan</label></div>
         <div class="checkline"><input asp-for="UseFileWatcher" type="checkbox" /><label asp-for="UseFileWatcher">Low-latency file watcher (SMB/local only)</label></div>
     </div>
+    <div class="hint mb-3">Virus scan runs Windows Defender on downloaded files before they're delivered; anything flagged is quarantined, never retried. The file watcher triggers a run within seconds of a change, on top of the normal schedule.</div>
     <div class="row">
         <div class="checkline"><input asp-for="GenerateChecksumManifest" type="checkbox" /><label asp-for="GenerateChecksumManifest">Write .sha256 manifest</label></div>
         <div class="checkline"><input asp-for="ValidateChecksumManifest" type="checkbox" /><label asp-for="ValidateChecksumManifest">Require source .sha256 manifest</label></div>
     </div>
+    <div class="hint">Write drops a checksum file alongside each delivered file; Require rejects (quarantines) any source file that doesn't already have a matching checksum file.</div>
 </div>
 
 <div class="tab-pane fade" id="t-semaphore">
-    <fieldset><legend>Semaphore</legend>
-        <div class="row">
-            <div><label>Mode</label><select asp-for="Semaphore.SemaphoreModeId" asp-items="Html.GetEnumSelectList<SemaphoreMode>()"></select></div>
-            <div><label>Trigger pattern</label><input name="Semaphore.TriggerPattern" value="@Model.Semaphore.TriggerPattern" /></div>
+    <p class="tab-intro">Whether to wait for an explicit "ready" signal before transferring, and what to do with the source file afterward.</p>
+
+    <div class="field-group-title"><i class="bi bi-flag"></i>Semaphore (ready signal)</div>
+    <p class="hint mb-3">Some partners write a small flag file once they're done writing the real files, so you know it's safe to transfer. Leave Mode as None to transfer files as soon as they're found and stable, with no flag file required.</p>
+    <div class="row">
+        <div>
+            <label>Mode</label><select asp-for="Semaphore.SemaphoreModeId" asp-items="Html.GetEnumSelectList<SemaphoreMode>()"></select>
+            <div class="hint">Per-file: each file needs its own matching flag. Batch: one flag releases every stable file in the folder.</div>
         </div>
-        <div class="row">
-            <div class="checkline"><input type="checkbox" name="Semaphore.DeleteTriggerAfter" @(Model.Semaphore.DeleteTriggerAfter ? "checked" : "") /><label>Delete trigger after</label></div>
-            <div class="checkline"><input type="checkbox" name="Semaphore.TransferTrigger" @(Model.Semaphore.TransferTrigger ? "checked" : "") /><label>Write trigger at destination too</label></div>
+        <div>
+            <label>Trigger pattern</label><input name="Semaphore.TriggerPattern" value="@Model.Semaphore.TriggerPattern" placeholder="{filename}.done" />
+            <div class="hint">Flag file name. Supports the same <code>{filename}/{name}/{ext}</code> tokens as rename patterns.</div>
         </div>
-    </fieldset>
-    <fieldset><legend>Post-action</legend>
-        <div class="row">
-            <div><label>Action</label><select name="PostAction.PostActionTypeId" asp-items="Html.GetEnumSelectList<PostActionType>()"></select></div>
-            <div><label>Archive subfolder</label><input name="PostAction.ArchivePath" value="@Model.PostAction.ArchivePath" /></div>
+    </div>
+    <div class="row">
+        <div class="checkline"><input type="checkbox" name="Semaphore.DeleteTriggerAfter" @(Model.Semaphore.DeleteTriggerAfter ? "checked" : "") /><label>Delete trigger after</label></div>
+        <div class="checkline"><input type="checkbox" name="Semaphore.TransferTrigger" @(Model.Semaphore.TransferTrigger ? "checked" : "") /><label>Write trigger at destination too</label></div>
+    </div>
+
+    <div class="field-group-title"><i class="bi bi-box-arrow-right"></i>Post-action</div>
+    <p class="hint mb-3">What happens to the source file once it has been delivered successfully. This never runs on a failed or quarantined file.</p>
+    <div class="row">
+        <div>
+            <label>Action</label><select name="PostAction.PostActionTypeId" asp-items="Html.GetEnumSelectList<PostActionType>()"></select>
+            <div class="hint">None leaves the source file in place &mdash; watch for duplicate transfers if filters don't exclude it next run.</div>
         </div>
-        <div><label>Rename pattern (Rename / Archive)</label><input name="PostAction.RenamePattern" value="@Model.PostAction.RenamePattern" placeholder="{name}_{date:yyyyMMddHHmmss}{ext}" class="fb-mono" /></div>
-    </fieldset>
+        <div>
+            <label>Archive subfolder</label><input name="PostAction.ArchivePath" value="@Model.PostAction.ArchivePath" placeholder="archive" />
+            <div class="hint">Relative subfolder under the source folder. Only used when Action is Archive.</div>
+        </div>
+    </div>
+    <div>
+        <label>Rename pattern (Rename / Archive)</label><input name="PostAction.RenamePattern" value="@Model.PostAction.RenamePattern" placeholder="{name}_{date:yyyyMMddHHmmss}{ext}" class="fb-mono" />
+        <div class="hint">Optional. Same tokens as the Processing tab's rename pattern; applies to the source copy, not the delivered file.</div>
+    </div>
 </div>
 
 <div class="tab-pane fade" id="t-notify">
-    <h2>Notifications</h2>
+    <p class="tab-intro">Who to alert when something happens with this job, and how to detect when expected files simply never showed up.</p>
+
+    <div class="field-group-title"><i class="bi bi-bell"></i>Notifications</div>
+    <p class="hint mb-3">Optional. Fires only for this job, in addition to any global notification rules configured under Settings.</p>
     <div id="notifications">
         @for (var i = 0; i < Model.Notifications.Count; i++)
         {
@@ -204,9 +309,11 @@
             <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
         </div>
     </template>
-    <button type="button" class="btn-fb secondary" data-fb-add-row="notifications">Add notification rule</button>
+    <button type="button" class="btn-fb secondary" data-fb-add-row="notifications"><i class="bi bi-plus-lg"></i> Add notification rule</button>
+    <p class="hint mt-2">Target is an email address (or several separated by <code>;</code>) for the Email channel, or a webhook URL for Teams.</p>
 
-    <h2 class="mt-4">SLA rules</h2>
+    <div class="field-group-title"><i class="bi bi-stopwatch"></i>SLA rules</div>
+    <p class="hint mb-3">Optional. If fewer than the minimum files have arrived by the expected time on an active day, a JobFailed-style SLA breach notification fires &mdash; at most once per rule per day.</p>
     <div id="slaRules">
         @for (var i = 0; i < Model.SlaRules.Count; i++)
         {
@@ -228,9 +335,11 @@
             <button type="button" class="btn-fb secondary fb-remove-row" data-fb-remove-row>Remove</button>
         </div>
     </template>
-    <button type="button" class="btn-fb secondary" data-fb-add-row="slaRules">Add SLA rule</button>
+    <button type="button" class="btn-fb secondary" data-fb-add-row="slaRules"><i class="bi bi-plus-lg"></i> Add SLA rule</button>
+    <p class="hint mt-2">Expected by is in this job's own time zone. File pattern is optional (SQL-style, e.g. <code>%.csv</code>) to only count matching files toward the minimum.</p>
 </div>
 
+</div>
 </div>
 
 <div class="divider-top mt-4 pt-3">

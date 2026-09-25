@@ -113,10 +113,10 @@ public sealed class JobService(FileBridgeDbContext db, ICurrentUser user)
         job.ValidateChecksumManifest = m.ValidateChecksumManifest; job.UseFileWatcher = m.UseFileWatcher;
         job.Version++;
 
-        Sync(job.FolderMaps, m.FolderMaps, (e, s) => { e.SourcePath = s.SourcePath; e.DestinationPath = s.DestinationPath; e.Recursive = s.Recursive; e.PreserveSubfolders = s.PreserveSubfolders; }, s => new JobFolderMap());
-        Sync(job.Filters, m.Filters, (e, s) => { e.Pattern = s.Pattern; e.IsRegex = s.IsRegex; e.IsExclude = s.IsExclude; e.MinSizeBytes = s.MinSizeBytes; e.MaxSizeBytes = s.MaxSizeBytes; e.MinAgeSeconds = s.MinAgeSeconds; e.AllowedFileTypes = s.AllowedFileTypes; }, s => new FileFilter());
-        Sync(job.NotificationRules, m.Notifications, (e, s) => { e.NotificationEventId = s.NotificationEventId; e.NotificationChannelId = s.NotificationChannelId; e.Target = s.Target; e.IsEnabled = s.IsEnabled; }, s => new NotificationRule());
-        Sync(job.SlaRules, m.SlaRules, (e, s) => { e.ExpectedByLocalTime = s.ExpectedByLocalTime; e.DaysMask = FileBridge.Core.Rules.ScheduleWindow.ToMask(s.ActiveDays); e.FilePattern = s.FilePattern; e.MinFileCount = s.MinFileCount; e.IsEnabled = s.IsEnabled; }, s => new SlaRule());
+        EntitySync.Sync(job.FolderMaps, m.FolderMaps, (e, s) => { e.SourcePath = s.SourcePath; e.DestinationPath = s.DestinationPath; e.Recursive = s.Recursive; e.PreserveSubfolders = s.PreserveSubfolders; }, s => new JobFolderMap());
+        EntitySync.Sync(job.Filters, m.Filters, (e, s) => { e.Pattern = s.Pattern; e.IsRegex = s.IsRegex; e.IsExclude = s.IsExclude; e.MinSizeBytes = s.MinSizeBytes; e.MaxSizeBytes = s.MaxSizeBytes; e.MinAgeSeconds = s.MinAgeSeconds; e.AllowedFileTypes = s.AllowedFileTypes; }, s => new FileFilter());
+        EntitySync.Sync(job.NotificationRules, m.Notifications, (e, s) => { e.NotificationEventId = s.NotificationEventId; e.NotificationChannelId = s.NotificationChannelId; e.Target = s.Target; e.IsEnabled = s.IsEnabled; }, s => new NotificationRule());
+        EntitySync.Sync(job.SlaRules, m.SlaRules, (e, s) => { e.ExpectedByLocalTime = s.ExpectedByLocalTime; e.DaysMask = FileBridge.Core.Rules.ScheduleWindow.ToMask(s.ActiveDays); e.FilePattern = s.FilePattern; e.MinFileCount = s.MinFileCount; e.IsEnabled = s.IsEnabled; }, s => new SlaRule());
 
         if (m.Semaphore.SemaphoreModeId == SemaphoreMode.None) { if (job.SemaphoreRule is not null) db.Remove(job.SemaphoreRule); job.SemaphoreRule = null; }
         else
@@ -142,24 +142,6 @@ public sealed class JobService(FileBridgeDbContext db, ICurrentUser user)
 
         db.JobVersions.Add(new JobVersion { JobId = job.Id, Version = job.Version, SnapshotJson = JsonSerializer.Serialize(m), CreatedBy = user.Name, CreatedUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
-    }
-
-    /// <summary>Keyed sync of a job's child collections: updates matches by Id, adds new rows (Id == 0), removes the rest.</summary>
-    private static void Sync<TEntity, TModel>(List<TEntity> existing, List<TModel> incoming, Action<TEntity, TModel> apply, Func<TModel, TEntity> create)
-        where TEntity : class
-    {
-        var idProp = typeof(TEntity).GetProperty("Id")!;
-        var modelIdProp = typeof(TModel)!.GetProperty("Id");
-        var existingById = existing.ToDictionary(e => (int)idProp.GetValue(e)!);
-        var keepIds = new HashSet<int>();
-
-        foreach (var s in incoming)
-        {
-            var id = modelIdProp is null ? 0 : (int)(modelIdProp.GetValue(s) ?? 0);
-            if (id != 0 && existingById.TryGetValue(id, out var entity)) { apply(entity, s); keepIds.Add(id); }
-            else { var e = create(s); apply(e, s); existing.Add(e); }
-        }
-        existing.RemoveAll(e => (int)idProp.GetValue(e)! != 0 && !keepIds.Contains((int)idProp.GetValue(e)!));
     }
 
     public async Task ApproveAsync(long changeRequestId)

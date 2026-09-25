@@ -12,7 +12,33 @@ namespace FileBridge.Admin.Controllers;
 [Authorize(Policy = Security.Policies.Operate)]
 public sealed class JobsController(FileBridgeDbContext db, JobService jobs, RequestService requests) : Controller
 {
-    public async Task<IActionResult> Index() => View(await jobs.ListAsync());
+    public async Task<IActionResult> Index()
+    {
+        var list = await jobs.ListAsync();
+        var jobIds = list.Select(j => j.Id).ToList();
+
+        // Health = outcome of each job's most recently completed run (in-progress rows don't count).
+        var latestIds = await db.TransferHistories.AsNoTracking()
+            .Where(h => jobIds.Contains(h.JobId) && h.TransferStatusId != TransferStatus.InProgress)
+            .GroupBy(h => h.JobId)
+            .Select(g => g.OrderByDescending(x => x.StartedUtc).Select(x => x.Id).First())
+            .ToListAsync();
+        var lastStatusByJob = await db.TransferHistories.AsNoTracking()
+            .Where(h => latestIds.Contains(h.Id))
+            .ToDictionaryAsync(h => h.JobId, h => h.TransferStatusId);
+
+        ViewBag.JobHealth = list.ToDictionary(j => j.Id, j => lastStatusByJob.TryGetValue(j.Id, out var s)
+            ? s switch
+            {
+                TransferStatus.Succeeded => ("Healthy", "ok"),
+                TransferStatus.Failed => ("Failing", "fail"),
+                TransferStatus.Quarantined => ("Held for review", "quarantine"),
+                _ => ("Last run " + s.ToString().ToLowerInvariant(), "muted")
+            }
+            : ("Not yet run", "muted"));
+
+        return View(list);
+    }
 
     [Authorize(Policy = Security.Policies.Administer)]
     public async Task<IActionResult> Create()
@@ -39,6 +65,7 @@ public sealed class JobsController(FileBridgeDbContext db, JobService jobs, Requ
 
         var (applied, message) = await jobs.SubmitAsync(model);
         TempData["Message"] = message;
+        TempData["MessageType"] = applied ? "success" : "info";
         return RedirectToAction(nameof(Index));
     }
 
@@ -94,6 +121,7 @@ public sealed class JobsController(FileBridgeDbContext db, JobService jobs, Requ
     {
         var deleted = await jobs.DeleteAsync(id);
         TempData["Message"] = deleted ? "Job deleted." : "Job has run history, so it was disabled instead of deleted.";
+        TempData["MessageType"] = deleted ? "success" : "warning";
         return RedirectToAction(nameof(Index));
     }
 

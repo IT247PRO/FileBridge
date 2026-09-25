@@ -26,6 +26,7 @@ public sealed class SettingsController(FileBridgeDbContext db) : Controller
         if (setting is null) return NotFound();
         setting.SettingValue = value;
         await db.SaveChangesAsync();
+        TempData["Message"] = $"'{key}' updated.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -34,6 +35,7 @@ public sealed class SettingsController(FileBridgeDbContext db) : Controller
     {
         db.RoleMappings.Add(new RoleMapping { AdGroup = adGroup, AppRoleId = role });
         await db.SaveChangesAsync();
+        TempData["Message"] = $"Role mapping added for '{adGroup}'.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -42,6 +44,7 @@ public sealed class SettingsController(FileBridgeDbContext db) : Controller
     {
         var m = await db.RoleMappings.FindAsync(id);
         if (m is not null) { db.RoleMappings.Remove(m); await db.SaveChangesAsync(); }
+        TempData["Message"] = "Role mapping removed.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -50,6 +53,7 @@ public sealed class SettingsController(FileBridgeDbContext db) : Controller
     {
         db.BlackoutWindows.Add(new BlackoutWindow { JobId = null, StartUtc = startUtc, EndUtc = endUtc, Reason = reason });
         await db.SaveChangesAsync();
+        TempData["Message"] = "Global blackout window added.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -58,6 +62,25 @@ public sealed class SettingsController(FileBridgeDbContext db) : Controller
     {
         db.NotificationRules.Add(new NotificationRule { JobId = null, NotificationEventId = evt, NotificationChannelId = channel, Target = target, IsEnabled = true });
         await db.SaveChangesAsync();
+        TempData["Message"] = "Global notification rule added.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveBlackout(int id)
+    {
+        var b = await db.BlackoutWindows.FirstOrDefaultAsync(x => x.Id == id && x.JobId == null);
+        if (b is not null) { db.BlackoutWindows.Remove(b); await db.SaveChangesAsync(); }
+        TempData["Message"] = "Global blackout window removed.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveGlobalNotification(int id)
+    {
+        var n = await db.NotificationRules.FirstOrDefaultAsync(x => x.Id == id && x.JobId == null);
+        if (n is not null) { db.NotificationRules.Remove(n); await db.SaveChangesAsync(); }
+        TempData["Message"] = "Global notification rule removed.";
         return RedirectToAction(nameof(Index));
     }
 }

@@ -1,11 +1,12 @@
 @model List<ChangeRequest>
 @{ ViewData["Title"] = "Approvals"; }
-<h1>Pending approvals</h1>
+<page-header title="Pending approvals"></page-header>
 @if (Model.Count == 0) { <div class="fb-empty">No changes are waiting for approval.</div> }
 @foreach (var c in Model)
 {
     <div class="fb-card">
-        <div><strong>@c.EntityName</strong> @(c.EntityKey is null ? "(new)" : $"#{c.EntityKey}") — requested by @c.RequestedBy on @c.RequestedUtc.ToString("u")</div>
+        <div><strong>@c.EntityName</strong> @(c.EntityKey is null ? "(new)" : $"#{c.EntityKey}") — requested by @c.RequestedBy on @c.RequestedUtc.ToString("u")
+            <a class="fb-textlink ms-2" asp-action="Details" asp-route-id="@c.Id">Review side-by-side</a></div>
         <details class="mt-2"><summary>View payload</summary><pre class="fb-mono pre-wrap">@c.PayloadJson</pre></details>
         <form method="post" asp-action="Approve" asp-route-id="@c.Id" class="d-inline mt-2"><button type="submit" class="btn-fb">Approve</button></form>
         <form method="post" asp-action="Reject" asp-route-id="@c.Id" class="d-inline ms-2">

@@ -154,7 +154,9 @@ USING (VALUES
         (3, N'TestConnection', N'Test Connection', 30),
         (4, N'Browse', N'Browse', 40),
         (5, N'ReleaseQuarantine', N'Release Quarantine', 50),
-        (6, N'DiscardQuarantine', N'Discard Quarantine', 60)
+        (6, N'DiscardQuarantine', N'Discard Quarantine', 60),
+        (7, N'RunProcessNow', N'Run Process Now', 70),
+        (8, N'KillProcess', N'Kill Process', 80)
 ) AS s (Id, Code, Name, SortOrder)
 ON t.Id = s.Id
 WHEN MATCHED THEN UPDATE SET t.Code = s.Code, t.Name = s.Name, t.SortOrder = s.SortOrder
@@ -201,6 +203,21 @@ USING (VALUES
         (1, N'Added', N'Added', 10),
         (2, N'Modified', N'Modified', 20),
         (3, N'Deleted', N'Deleted', 30)
+) AS s (Id, Code, Name, SortOrder)
+ON t.Id = s.Id
+WHEN MATCHED THEN UPDATE SET t.Code = s.Code, t.Name = s.Name, t.SortOrder = s.SortOrder
+WHEN NOT MATCHED THEN INSERT (Id, Code, Name, SortOrder) VALUES (s.Id, s.Code, s.Name, s.SortOrder);
+GO
+
+MERGE dbo.lkpProcessRunStatus AS t
+USING (VALUES
+        (1, N'Starting', N'Starting', 10),
+        (2, N'Running', N'Running', 20),
+        (3, N'Succeeded', N'Succeeded', 30),
+        (4, N'Failed', N'Failed', 40),
+        (5, N'Killed', N'Killed', 50),
+        (6, N'TimedOut', N'Timed Out', 60),
+        (7, N'Lost', N'Lost', 70)
 ) AS s (Id, Code, Name, SortOrder)
 ON t.Id = s.Id
 WHEN MATCHED THEN UPDATE SET t.Code = s.Code, t.Name = s.Name, t.SortOrder = s.SortOrder

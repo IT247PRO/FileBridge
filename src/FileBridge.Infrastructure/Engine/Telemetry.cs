@@ -10,4 +10,5 @@ public static class Telemetry
     private static readonly Meter Meter = new(Name);
     public static readonly Counter<long> Files = Meter.CreateCounter<long>("filebridge.files", description: "Files processed, tagged by job and status");
     public static readonly Counter<long> Bytes = Meter.CreateCounter<long>("filebridge.bytes", "By", "Bytes delivered");
+    public static readonly Counter<long> Processes = Meter.CreateCounter<long>("filebridge.processes", description: "Process jobs launched, tagged by job and status");
 }

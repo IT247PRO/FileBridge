@@ -1,0 +1,54 @@
+@model List<ProcessJob>
+@{
+    ViewData["Title"] = "Batch process jobs";
+    var health = (Dictionary<int, (string Label, string Badge)>)ViewBag.JobHealth;
+    var running = (HashSet<int>)ViewBag.Running;
+}
+<page-header title="Batch process jobs" description="Launches an external program on a schedule and tracks it by process ID, alongside the file-transfer jobs under Jobs.">
+    <a class="btn-fb" asp-action="Create"><i class="bi bi-plus-lg"></i> Add batch process job</a>
+</page-header>
+<div class="fb-card">
+<table class="fb-table">
+    <thead><tr><th>Batch process job</th><th>Executable</th><th>Schedule</th><th>Status</th><th>Health</th><th></th></tr></thead>
+    <tbody>
+    @if (Model.Count == 0)
+    {
+        <tr><td colspan="6" class="fb-empty">No batch process jobs yet.</td></tr>
+    }
+    @foreach (var j in Model)
+    {
+        <tr>
+            <td>@j.Name</td>
+            <td class="fb-mono text-xs path">@j.ExecutablePath</td>
+            <td class="fb-mono text-xs">@(j.ScheduleTypeId == ScheduleType.Cron ? j.CronExpression : $"every {j.IntervalSeconds}s")</td>
+            <td>
+                @if (!j.IsEnabled) { <span class="fb-badge muted">Disabled</span> }
+                else if (running.Contains(j.Id)) { <span class="fb-badge running"><span class="fb-live-dot"></span> Running</span> }
+                else if (j.IsPaused) { <span class="fb-badge warn">Paused</span> }
+                else { <span class="fb-badge ok">Active</span> }
+            </td>
+            <td>
+                @{ var h = health[j.Id]; }
+                <span class="fb-badge @h.Badge" title="Based on the most recently completed run">@h.Label</span>
+            </td>
+            <td class="text-nowrap">
+                <div class="d-flex gap-1 flex-wrap align-items-center">
+                    @if (running.Contains(j.Id))
+                    {
+                        <button class="btn-fb danger" data-fb-action data-fb-url="/ProcessJobs/Kill/@j.Id" data-fb-title="Kill: @j.Name" data-fb-confirm="Kill the running process for '@j.Name'?">Kill</button>
+                    }
+                    else
+                    {
+                        <button class="btn-fb secondary" data-fb-action data-fb-url="/ProcessJobs/RunNow/@j.Id" data-fb-title="Run now: @j.Name">Run now</button>
+                    }
+                    <form method="post" asp-action="TogglePause" asp-route-id="@j.Id" class="d-inline"><button type="submit" class="btn-fb secondary">@(j.IsPaused ? "Resume" : "Pause")</button></form>
+                    <a class="fb-textlink" asp-action="Edit" asp-route-id="@j.Id">Edit</a>
+                    <a class="fb-textlink" asp-action="History" asp-route-id="@j.Id">History</a>
+                    <form method="post" asp-action="Delete" asp-route-id="@j.Id" class="d-inline" data-fb-confirm="Delete '@j.Name'?"><button type="submit" class="btn-fb secondary text-danger">Delete</button></form>
+                </div>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+</div>

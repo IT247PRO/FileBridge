@@ -11,11 +11,13 @@ namespace FileBridge.Admin.Services;
 /// </summary>
 public sealed class RequestService(FileBridgeDbContext db, ICurrentUser user)
 {
-    public async Task<long> EnqueueAsync(RequestType type, int? jobId = null, int? endpointId = null, int? quarantineId = null, string? path = null)
+    public async Task<long> EnqueueAsync(RequestType type, int? jobId = null, int? endpointId = null, int? quarantineId = null,
+        string? path = null, int? processJobId = null, string? targetNode = null)
     {
         var req = new RunRequest
         {
             RequestTypeId = type, JobId = jobId, EndpointId = endpointId, QuarantineId = quarantineId, Path = path,
+            ProcessJobId = processJobId, TargetNode = targetNode,
             RequestStatusId = RequestStatus.Queued, RequestedBy = user.Name, RequestedUtc = DateTime.UtcNow
         };
         db.RunRequests.Add(req);

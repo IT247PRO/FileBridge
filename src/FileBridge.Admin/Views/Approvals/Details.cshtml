@@ -1,19 +1,27 @@
 @model ChangeRequest
 @{ ViewData["Title"] = "Review change"; var current = ViewBag.Current as string; }
-<header class="page-head">
-    <h1>Change to @Model.EntityName @(Model.EntityKey is null ? "(new)" : $"#{Model.EntityKey}")</h1>
-    <p class="muted">Requested by @Model.RequestedBy on @Ui.Local(Model.RequestedUtc).</p>
-</header>
-<div class="grid-2">
-    <section><h2 class="h6">Current settings</h2><pre class="json">@(current ?? "This creates a new job.")</pre></section>
-    <section><h2 class="h6">Proposed settings</h2><pre class="json">@Model.PayloadJson</pre></section>
+<page-header title="@($"Change to {Model.EntityName} {(Model.EntityKey is null ? "(new)" : $"#{Model.EntityKey}")}")"
+             description="@($"Requested by {Model.RequestedBy} on {Ui.Local(Model.RequestedUtc)}.")"></page-header>
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <div class="fb-card h-100">
+            <h2 class="h6">Current settings</h2>
+            <pre class="fb-mono pre-wrap">@(current ?? "This creates a new job.")</pre>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="fb-card h-100">
+            <h2 class="h6">Proposed settings</h2>
+            <pre class="fb-mono pre-wrap">@Model.PayloadJson</pre>
+        </div>
+    </div>
 </div>
 @if (Model.ApprovalStatusId == ApprovalStatus.Pending)
 {
-    <form method="post" class="form-foot">
+    <form method="post" class="d-flex gap-2 align-items-center">
         <input type="hidden" name="id" value="@Model.Id" />
-        <input name="comment" class="form-control" placeholder="Comment (optional)" aria-label="Comment" />
-        <button class="btn btn-primary" asp-action="Approve">Approve and apply</button>
-        <button class="btn btn-outline-danger" asp-action="Reject">Reject</button>
+        <input name="comment" class="form-control w-xl" placeholder="Comment (optional)" aria-label="Comment" />
+        <button class="btn-fb" asp-action="Approve">Approve and apply</button>
+        <button class="btn-fb danger" asp-action="Reject">Reject</button>
     </form>
 }

@@ -64,6 +64,14 @@ builder.Services.AddQuartz(q =>
     q.ScheduleJob<SlaJob>(t => t.WithIdentity("system-sla", "system")
         .WithSimpleSchedule(s => s.WithIntervalInSeconds(60).RepeatForever()).StartNow(),
         j => j.WithIdentity("system-sla", "system").StoreDurably());
+
+    q.ScheduleJob<ProcessScheduleSyncJob>(t => t.WithIdentity("system-process-schedule-sync", "system")
+        .WithSimpleSchedule(s => s.WithIntervalInSeconds(30).RepeatForever()).StartNow(),
+        j => j.WithIdentity("system-process-schedule-sync", "system").StoreDurably());
+
+    q.ScheduleJob<ProcessWatchdogJob>(t => t.WithIdentity("system-process-watchdog", "system")
+        .WithSimpleSchedule(s => s.WithIntervalInSeconds(20).RepeatForever()).StartNow(),
+        j => j.WithIdentity("system-process-watchdog", "system").StoreDurably());
 });
 builder.Services.AddQuartzHostedService(o => o.WaitForJobsToComplete = true);
 

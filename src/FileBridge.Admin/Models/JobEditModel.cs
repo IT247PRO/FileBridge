@@ -149,15 +149,78 @@ public sealed class EncryptionProfileEditModel
     public byte[]? RowVersion { get; set; }
 }
 
+public sealed class ProcessEnvVarModel
+{
+    public int Id { get; set; }
+    [Required] public string Key { get; set; } = "";
+    public string? Value { get; set; }
+    public bool IsSecret { get; set; }
+}
+
+public sealed class ProcessJobEditModel
+{
+    public int Id { get; set; }
+    [Required, StringLength(200)] public string Name { get; set; } = "";
+    public string? Description { get; set; }
+    public bool IsEnabled { get; set; } = true;
+    public bool IsPaused { get; set; }
+
+    public ScheduleType ScheduleTypeId { get; set; } = ScheduleType.Interval;
+    public string? CronExpression { get; set; }
+    public int? IntervalSeconds { get; set; } = 300;
+    [Required] public string TimeZoneId { get; set; } = "Central Standard Time";
+    public TimeOnly? ActiveFromTime { get; set; }
+    public TimeOnly? ActiveToTime { get; set; }
+    public List<DayOfWeek> ActiveDays { get; set; } = Enum.GetValues<DayOfWeek>().ToList();
+
+    [Required] public string ExecutablePath { get; set; } = "";
+    public string? Arguments { get; set; }
+    public string? WorkingDirectory { get; set; }
+    public int? TimeoutSeconds { get; set; }
+    [Required] public string SuccessExitCodesCsv { get; set; } = "0";
+
+    public int Version { get; set; }
+    public byte[]? RowVersion { get; set; }
+
+    public List<ProcessEnvVarModel> EnvironmentVariables { get; set; } = [];
+    public List<NotificationModel> Notifications { get; set; } = [];
+}
+
+public sealed record RecentTransferRow(long Id, string JobName, string FileName, TransferStatus Status, long SizeBytes, DateTime StartedUtc, long? DurationMs);
+
+public sealed record UpcomingJobRow(int JobId, string JobName, ScheduleType ScheduleType, DateTime NextRunUtc);
+
+public sealed record RunningProcessRow(long HistoryId, int ProcessJobId, string ProcessJobName, int? Pid, string NodeName, string TriggeredBy, DateTime StartedUtc);
+
+public sealed record RecentProcessRunRow(long Id, int ProcessJobId, string ProcessJobName, ProcessRunStatus Status, int? ExitCode, DateTime StartedUtc, long? DurationMs);
+
+public sealed record UpcomingProcessJobRow(int ProcessJobId, string ProcessJobName, ScheduleType ScheduleType, DateTime NextRunUtc);
+
+public enum UpcomingKind { Transfer, BatchProcess }
+
+/// <summary>One row in the dashboard's combined Upcoming card; Kind drives which icon/color chip a row gets.</summary>
+public sealed record UpcomingItemRow(UpcomingKind Kind, int EntityId, string Name, ScheduleType ScheduleType, DateTime NextRunUtc);
+
 public sealed class DashboardViewModel
 {
     public int SucceededToday { get; set; }
     public int FailedToday { get; set; }
     public int InProgress { get; set; }
-    public long BytesToday { get; set; }
     public int HeldQuarantine { get; set; }
-    public int PendingApprovals { get; set; }
     public bool KillSwitchOn { get; set; }
     public List<(string NodeName, string NodeRole, DateTime LastSeenUtc)> Nodes { get; set; } = [];
     public List<(string JobName, int Failed, DateTime LastRunUtc)> RecentFailingJobs { get; set; } = [];
+    public List<RecentTransferRow> RecentTransfers { get; set; } = [];
+
+    // ---- Batch process jobs ----
+    public int ProcessSucceededToday { get; set; }
+    public int ProcessFailedToday { get; set; }
+    public int ProcessesRunningNow { get; set; }
+    public List<RunningProcessRow> RunningProcesses { get; set; } = [];
+    public List<(string ProcessJobName, int Failed, DateTime LastRunUtc)> RecentFailingProcessJobs { get; set; } = [];
+    public List<RecentProcessRunRow> RecentProcessRuns { get; set; } = [];
+
+    /// <summary>Transfer jobs and batch process jobs merged and sorted by next run. Approximate: computed from
+    /// each job's own cron/interval schedule, not read from the Worker's live Quartz state.</summary>
+    public List<UpcomingItemRow> UpcomingItems { get; set; } = [];
 }

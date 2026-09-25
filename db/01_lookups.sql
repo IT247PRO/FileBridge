@@ -192,3 +192,14 @@ CREATE TABLE dbo.lkpAuditAction (
     IsActive    BIT            NOT NULL CONSTRAINT DF_lkpAuditAction_IsActive DEFAULT (1)
 );
 GO
+
+IF OBJECT_ID(N'dbo.lkpProcessRunStatus', N'U') IS NULL
+CREATE TABLE dbo.lkpProcessRunStatus (
+    Id          INT            NOT NULL CONSTRAINT PK_lkpProcessRunStatus PRIMARY KEY,
+    Code        NVARCHAR(50)   NOT NULL CONSTRAINT UQ_lkpProcessRunStatus_Code UNIQUE,
+    Name        NVARCHAR(100)  NOT NULL,
+    Description NVARCHAR(400)  NULL,
+    SortOrder   INT            NOT NULL CONSTRAINT DF_lkpProcessRunStatus_SortOrder DEFAULT (0),
+    IsActive    BIT            NOT NULL CONSTRAINT DF_lkpProcessRunStatus_IsActive DEFAULT (1)
+);
+GO

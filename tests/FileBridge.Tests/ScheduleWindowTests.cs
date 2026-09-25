@@ -17,26 +17,24 @@ public class ScheduleWindowTests
     [Fact]
     public void NormalWindowWithinRange()
     {
-        var job = new Job { ActiveFromTime = new TimeOnly(8, 0), ActiveToTime = new TimeOnly(17, 0), ActiveDaysMask = 127 };
-        Assert.True(ScheduleWindow.IsWithinActiveWindow(job, new DateTime(2026, 1, 5, 12, 0, 0))); // Monday noon
-        Assert.False(ScheduleWindow.IsWithinActiveWindow(job, new DateTime(2026, 1, 5, 19, 0, 0)));
+        Assert.True(ScheduleWindow.IsWithinActiveWindow(127, new TimeOnly(8, 0), new TimeOnly(17, 0), new DateTime(2026, 1, 5, 12, 0, 0))); // Monday noon
+        Assert.False(ScheduleWindow.IsWithinActiveWindow(127, new TimeOnly(8, 0), new TimeOnly(17, 0), new DateTime(2026, 1, 5, 19, 0, 0)));
     }
 
     [Fact]
     public void OvernightWindowWraps()
     {
-        var job = new Job { ActiveFromTime = new TimeOnly(22, 0), ActiveToTime = new TimeOnly(4, 0), ActiveDaysMask = 127 };
-        Assert.True(ScheduleWindow.IsWithinActiveWindow(job, new DateTime(2026, 1, 5, 23, 0, 0)));
-        Assert.True(ScheduleWindow.IsWithinActiveWindow(job, new DateTime(2026, 1, 5, 2, 0, 0)));
-        Assert.False(ScheduleWindow.IsWithinActiveWindow(job, new DateTime(2026, 1, 5, 12, 0, 0)));
+        Assert.True(ScheduleWindow.IsWithinActiveWindow(127, new TimeOnly(22, 0), new TimeOnly(4, 0), new DateTime(2026, 1, 5, 23, 0, 0)));
+        Assert.True(ScheduleWindow.IsWithinActiveWindow(127, new TimeOnly(22, 0), new TimeOnly(4, 0), new DateTime(2026, 1, 5, 2, 0, 0)));
+        Assert.False(ScheduleWindow.IsWithinActiveWindow(127, new TimeOnly(22, 0), new TimeOnly(4, 0), new DateTime(2026, 1, 5, 12, 0, 0)));
     }
 
     [Fact]
     public void DayMaskExcludesDay()
     {
-        var job = new Job { ActiveDaysMask = ScheduleWindow.ToMask(new[] { DayOfWeek.Saturday, DayOfWeek.Sunday }) };
-        Assert.False(ScheduleWindow.IsWithinActiveWindow(job, new DateTime(2026, 1, 5, 12, 0, 0))); // Monday
-        Assert.True(ScheduleWindow.IsWithinActiveWindow(job, new DateTime(2026, 1, 3, 12, 0, 0)));  // Saturday
+        var mask = ScheduleWindow.ToMask(new[] { DayOfWeek.Saturday, DayOfWeek.Sunday });
+        Assert.False(ScheduleWindow.IsWithinActiveWindow(mask, null, null, new DateTime(2026, 1, 5, 12, 0, 0))); // Monday
+        Assert.True(ScheduleWindow.IsWithinActiveWindow(mask, null, null, new DateTime(2026, 1, 3, 12, 0, 0)));  // Saturday
     }
 
     [Fact]

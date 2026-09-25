@@ -18,3 +18,4 @@ public sealed class RequestStatusLookup : LookupEntity { }
 public sealed class QuarantineStatusLookup : LookupEntity { }
 public sealed class AppRoleLookup : LookupEntity { }
 public sealed class AuditActionLookup : LookupEntity { }
+public sealed class ProcessRunStatusLookup : LookupEntity { }

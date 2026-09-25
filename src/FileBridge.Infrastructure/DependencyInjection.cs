@@ -57,6 +57,7 @@ public static class DependencyInjection
         services.AddSingleton<ICryptoService, CryptoService>();
         services.AddSingleton<IAntivirusScanner, DefenderCliScanner>();
         services.AddScoped<TransferPipeline>();
+        services.AddScoped<ProcessLaunchService>();
         services.AddScoped<RetentionService>();
         services.AddScoped<SlaEvaluator>();
         return services;

@@ -169,6 +169,8 @@ public sealed class NotificationRule
     public int Id { get; set; }
     /// <summary>Null = applies to every job.</summary>
     public int? JobId { get; set; }
+    /// <summary>Set instead of JobId for a process-job-specific rule. There is no "global for every process job" shape yet: process jobs need an explicit rule.</summary>
+    public int? ProcessJobId { get; set; }
     public NotificationEvent NotificationEventId { get; set; }
     public NotificationChannel NotificationChannelId { get; set; }
     /// <summary>Email: semicolon list. Teams: protected webhook URL.</summary>
@@ -194,9 +196,56 @@ public sealed class BlackoutWindow
     public int Id { get; set; }
     /// <summary>Null = global blackout (all jobs).</summary>
     public int? JobId { get; set; }
+    /// <summary>Set instead of JobId for a process-job-specific blackout window.</summary>
+    public int? ProcessJobId { get; set; }
     public DateTime StartUtc { get; set; }
     public DateTime EndUtc { get; set; }
     public string? Reason { get; set; }
+}
+
+/// <summary>Launches an external executable on a schedule and tracks it by PID, alongside Job's file-transfer jobs.</summary>
+public sealed class ProcessJob : AuditableEntity
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string? Description { get; set; }
+    public bool IsEnabled { get; set; } = true;
+    public bool IsPaused { get; set; }
+
+    public ScheduleType ScheduleTypeId { get; set; } = ScheduleType.Interval;
+    public string? CronExpression { get; set; }
+    public int? IntervalSeconds { get; set; } = 300;
+    public string TimeZoneId { get; set; } = "Central Standard Time";
+    public TimeOnly? ActiveFromTime { get; set; }
+    public TimeOnly? ActiveToTime { get; set; }
+    /// <summary>Bit per DayOfWeek (Sunday = bit 0). 127 = every day.</summary>
+    public int ActiveDaysMask { get; set; } = 127;
+
+    /// <summary>Must exist at this path on every Worker node in the cluster; Quartz clustering doesn't let you pin which node runs a given job.</summary>
+    public string ExecutablePath { get; set; } = "";
+    /// <summary>Supports {date:...}/{utc:...}/{guid}/{job}/{node} tokens (see ProcessArgTemplater), not file-name tokens.</summary>
+    public string? Arguments { get; set; }
+    public string? WorkingDirectory { get; set; }
+    /// <summary>Null = no timeout; the process runs until it exits on its own.</summary>
+    public int? TimeoutSeconds { get; set; }
+    /// <summary>Comma-separated exit codes treated as success, e.g. "0" or "0,3010".</summary>
+    public string SuccessExitCodesCsv { get; set; } = "0";
+
+    public int Version { get; set; }
+
+    public List<ProcessEnvironmentVariable> EnvironmentVariables { get; set; } = new();
+    public List<NotificationRule> NotificationRules { get; set; } = new();
+    public List<BlackoutWindow> BlackoutWindows { get; set; } = new();
+}
+
+public sealed class ProcessEnvironmentVariable
+{
+    public int Id { get; set; }
+    public int ProcessJobId { get; set; }
+    public string Key { get; set; } = "";
+    public string Value { get; set; } = "";
+    /// <summary>When set, Value is Data-Protection-protected ciphertext, not plaintext (same convention as Credential).</summary>
+    public bool IsSecret { get; set; }
 }
 
 public sealed class GlobalSetting : AuditableEntity

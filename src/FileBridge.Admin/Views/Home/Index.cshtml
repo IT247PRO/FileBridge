@@ -1,59 +1,264 @@
 @model DashboardViewModel
 @{ ViewData["Title"] = "Dashboard"; }
-<h1>Dashboard</h1>
+<page-header title="Dashboard"></page-header>
 
-<div class="fb-grid">
-    <div class="fb-stat"><div class="n">@Model.SucceededToday</div><div class="l">Succeeded today</div></div>
-    <div class="fb-stat"><div class="n">@Model.FailedToday</div><div class="l">Failed today</div></div>
-    <div class="fb-stat"><div class="n">@Model.InProgress</div><div class="l">In progress</div></div>
-    <div class="fb-stat"><div class="n">@(Model.BytesToday / 1024 / 1024) MB</div><div class="l">Delivered today</div></div>
-    <div class="fb-stat"><div class="n">@Model.HeldQuarantine</div><div class="l">Held in quarantine</div></div>
-    <div class="fb-stat"><div class="n">@Model.PendingApprovals</div><div class="l">Pending approvals</div></div>
+<div class="row g-0">
+    <div class="col-lg-6">
+        <div class="fb-card fb-stat-group me-lg-3">
+            <div class="fb-stat-group-title"><i class="bi bi-arrow-left-right"></i> File transfers today</div>
+            <div class="fb-grid">
+                <div class="fb-stat bg-success-subtle"><div class="n">@Model.SucceededToday</div><div class="l">Succeeded today</div></div>
+                <div class="fb-stat bg-danger-subtle"><div class="n">@Model.FailedToday</div><div class="l">Failed today</div></div>
+                <div class="fb-stat bg-info-subtle"><div class="n">@Model.InProgress</div><div class="l">In progress</div></div>
+                <div class="fb-stat bg-warning-subtle"><div class="n">@Model.HeldQuarantine</div><div class="l">Held in quarantine</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="fb-card fb-stat-group batch">
+            <div class="fb-stat-group-title"><i class="bi bi-terminal"></i> Batch process jobs</div>
+            <div class="fb-grid">
+                <div class="fb-stat bg-info-subtle"><div class="n">@Model.ProcessesRunningNow</div><div class="l">Running now</div></div>
+                <div class="fb-stat bg-success-subtle"><div class="n">@Model.ProcessSucceededToday</div><div class="l">Succeeded today</div></div>
+                <div class="fb-stat bg-danger-subtle"><div class="n">@Model.ProcessFailedToday</div><div class="l">Failed today</div></div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="fb-card">
-    <h2>Kill switch</h2>
-    <p>When on, the Worker skips every scheduled and manual run cluster-wide. Use only for an emergency stop.</p>
-    <form method="post" asp-action="ToggleKillSwitch">
-        <button type="submit" class="btn-fb @(Model.KillSwitchOn ? "danger" : "secondary")">
-            @(Model.KillSwitchOn ? "Turn kill switch off" : "Turn kill switch on")
-        </button>
-        @if (Model.KillSwitchOn) { <span class="fb-badge fail ms-2">Kill switch is ON</span> }
-    </form>
+    <div class="d-flex justify-content-between align-items-baseline">
+        <h2><i class="bi bi-play-circle-fill text-success me-1"></i> Running batch processes</h2>
+        <a class="fb-textlink text-xs" asp-controller="ProcessJobs" asp-action="Index">All batch process jobs</a>
+    </div>
+    @if (Model.RunningProcesses.Count == 0) { <div class="fb-empty"><i class="bi bi-moon"></i> Nothing is running right now.</div> }
+    else
+    {
+        <table class="fb-table">
+            <thead><tr><th>Status</th><th>Batch process job</th><th>PID</th><th>Node</th><th>Triggered by</th><th>Started (UTC)</th><th>Elapsed</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var r in Model.RunningProcesses)
+            {
+                var elapsed = DateTime.UtcNow - r.StartedUtc;
+                <tr>
+                    <td><span class="fb-badge running"><span class="fb-live-dot"></span> Running</span></td>
+                    <td><a class="fb-textlink" asp-controller="ProcessJobs" asp-action="Edit" asp-route-id="@r.ProcessJobId">@r.ProcessJobName</a></td>
+                    <td class="fb-mono">@(r.Pid?.ToString() ?? "-")</td>
+                    <td>@r.NodeName</td>
+                    <td>@r.TriggeredBy</td>
+                    <td class="fb-mono text-xs">@r.StartedUtc.ToString("u")</td>
+                    <td class="fb-mono">@($"{(int)elapsed.TotalMinutes}m {elapsed.Seconds}s")</td>
+                    <td class="text-nowrap">
+                        <div class="d-flex gap-1 align-items-center">
+                            <button class="btn-fb danger" data-fb-action data-fb-url="/ProcessJobs/Kill/@r.ProcessJobId" data-fb-title="Kill: @r.ProcessJobName" data-fb-confirm="Kill the running process for '@r.ProcessJobName'?"><i class="bi bi-stop-fill"></i> Kill</button>
+                            <a class="fb-textlink" asp-controller="ProcessJobs" asp-action="History" asp-route-id="@r.ProcessJobId">History</a>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+<div class="fb-card">
+    <h2><i class="bi bi-calendar-event me-1"></i> Upcoming</h2>
+    @if (Model.UpcomingItems.Count == 0)
+    {
+        <div class="fb-empty">No enabled jobs are scheduled.</div>
+    }
+    else
+    {
+        <table class="fb-table">
+            <thead><tr><th>Kind</th><th>Job</th><th>Schedule</th><th>Next run (UTC)</th></tr></thead>
+            <tbody>
+                @foreach (var u in Model.UpcomingItems)
+                {
+                    var isBatch = u.Kind == UpcomingKind.BatchProcess;
+                    <tr>
+                        <td>
+                            @if (isBatch)
+                            {
+                                <span class="fb-kind batch"><i class="bi bi-terminal"></i> Batch</span>
+                            }
+                            else
+                            {
+
+                                <span class="fb-kind transfer"><i class="bi bi-arrow-left-right"></i> Transfer</span>
+                            }
+                        </td>
+                        <td>
+                            @if (isBatch)
+                            {
+                                <a class="fb-textlink" asp-controller="ProcessJobs" asp-action="Edit" asp-route-id="@u.EntityId">@u.Name</a>
+                            }
+                            else
+                            {
+
+                                <a class="fb-textlink" asp-controller="Jobs" asp-action="Edit" asp-route-id="@u.EntityId">@u.Name</a>
+                            }
+                        </td>
+                        <td><span class="fb-badge scheduled">@u.ScheduleType</span></td>
+                        <td class="fb-mono text-xs">@u.NextRunUtc.ToString("u")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+<div class="row g-0">
+    <div class="col-lg-8">
+        <div class="fb-card me-lg-3">
+            <div class="d-flex justify-content-between align-items-baseline">
+                <h2><i class="bi bi-arrow-left-right me-1"></i> Recent transfers</h2>
+                <a class="fb-textlink text-xs" asp-controller="History" asp-action="Index">View all</a>
+            </div>
+            @if (Model.RecentTransfers.Count == 0)
+            {
+                <div class="fb-empty">No transfers yet.</div>
+            }
+            else
+            {
+                <table class="fb-table">
+                    <thead><tr><th>Started (UTC)</th><th>Job</th><th>File</th><th>Status</th><th>Size</th></tr></thead>
+                    <tbody>
+                        @foreach (var t in Model.RecentTransfers)
+                        {
+                            var badge = t.Status switch
+                            {
+                                TransferStatus.Succeeded => "ok",
+                                TransferStatus.Failed => "fail",
+                                TransferStatus.Quarantined => "quarantine",
+                                TransferStatus.InProgress => "running",
+                                _ => "muted"
+                            };
+                            <tr>
+                                <td class="fb-mono text-xs">@t.StartedUtc.ToString("u")</td>
+                                <td>@t.JobName</td>
+                                <td><a class="fb-textlink" asp-controller="History" asp-action="Details" asp-route-id="@t.Id">@t.FileName</a></td>
+                                <td><span class="fb-badge @badge">@t.Status</span></td>
+                                <td class="num text-xs">@t.SizeBytes</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="fb-card">
+            <div class="d-flex justify-content-between align-items-baseline">
+                <h2><i class="bi bi-terminal me-1"></i> Recent process runs</h2>
+                <a class="fb-textlink text-xs" asp-controller="ProcessJobs" asp-action="Index">All batch process jobs</a>
+            </div>
+            @if (Model.RecentProcessRuns.Count == 0)
+            {
+                <div class="fb-empty">No process runs yet.</div>
+            }
+            else
+            {
+                <table class="fb-table">
+                    <thead><tr><th>Started (UTC)</th><th>Batch process job</th><th>Status</th><th>Exit code</th></tr></thead>
+                    <tbody>
+                        @foreach (var p in Model.RecentProcessRuns)
+                        {
+                            var badge = p.Status switch
+                            {
+                                ProcessRunStatus.Succeeded => "ok",
+                                ProcessRunStatus.Failed or ProcessRunStatus.TimedOut => "fail",
+                                ProcessRunStatus.Killed or ProcessRunStatus.Lost => "warn",
+                                ProcessRunStatus.Running or ProcessRunStatus.Starting => "running",
+                                _ => "muted"
+                            };
+                            <tr>
+                                <td class="fb-mono text-xs">@p.StartedUtc.ToString("u")</td>
+                                <td><a class="fb-textlink" asp-controller="ProcessJobs" asp-action="History" asp-route-id="@p.ProcessJobId">@p.ProcessJobName</a></td>
+                                <td><span class="fb-badge @badge">@if (p.Status == ProcessRunStatus.Running) {
+                                <span class="fb-live-dot"></span>
+                            }
+    @p.Status</span></td>
+                            <td class="fb-mono text-xs">@(p.ExitCode?.ToString() ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+                        }
+        </div>
+    </div>
+</div>
+<div class="row g-0">
+    <div class="col-lg-6">
+        <div class="fb-card me-lg-3">
+            <h2><i class="bi bi-exclamation-circle text-danger me-1"></i> Transfer jobs with failures today</h2>
+            @if (Model.RecentFailingJobs.Count == 0) { <div class="fb-empty">No failures today.</div> }
+            else
+            {
+                <table class="fb-table">
+                    <thead><tr><th>Job</th><th>Failures</th><th>Last failure (UTC)</th></tr></thead>
+                    <tbody>
+                    @foreach (var j in Model.RecentFailingJobs)
+                    {
+                        <tr><td>@j.JobName</td><td><span class="fb-badge fail">@j.Failed</span></td><td>@j.LastRunUtc.ToString("u")</td></tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="fb-card">
+            <h2><i class="bi bi-exclamation-circle text-danger me-1"></i> Batch process jobs with failures today</h2>
+            @if (Model.RecentFailingProcessJobs.Count == 0) { <div class="fb-empty">No failures today.</div> }
+            else
+            {
+                <table class="fb-table">
+                    <thead><tr><th>Batch process job</th><th>Failures</th><th>Last failure (UTC)</th></tr></thead>
+                    <tbody>
+                    @foreach (var j in Model.RecentFailingProcessJobs)
+                    {
+                        <tr><td>@j.ProcessJobName</td><td><span class="fb-badge fail">@j.Failed</span></td><td>@j.LastRunUtc.ToString("u")</td></tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
 </div>
 
+
+
 <div class="fb-card">
-    <h2>Cluster nodes</h2>
-    @if (Model.Nodes.Count == 0) { <div class="fb-empty">No heartbeats yet.</div> }
+    <h2><i class="bi bi-hdd-network me-1"></i> Cluster nodes</h2>
+    @if (Model.Nodes.Count == 0)
+    {
+        <div class="fb-empty">No heartbeats yet.</div>
+    }
     else
     {
         <table class="fb-table">
             <thead><tr><th>Node</th><th>Role</th><th>Last seen (UTC)</th><th>Status</th></tr></thead>
             <tbody>
-            @foreach (var n in Model.Nodes)
-            {
-                var stale = (DateTime.UtcNow - n.LastSeenUtc).TotalMinutes > 2;
-                <tr><td>@n.NodeName</td><td>@n.NodeRole</td><td>@n.LastSeenUtc.ToString("u")</td>
-                    <td><span class="fb-badge @(stale ? "warn" : "ok")">@(stale ? "Stale" : "Healthy")</span></td></tr>
-            }
+                @foreach (var n in Model.Nodes)
+                {
+                    var stale = (DateTime.UtcNow - n.LastSeenUtc).TotalMinutes > 2;
+                    <tr>
+                        <td>@n.NodeName</td>
+                        <td>@n.NodeRole</td>
+                        <td>@n.LastSeenUtc.ToString("u")</td>
+                        <td><span class="fb-badge @(stale ? "warn" : "ok")">@(stale ? "Stale" : "Healthy")</span></td>
+                    </tr>
+                }
             </tbody>
         </table>
     }
 </div>
 
-<div class="fb-card">
-    <h2>Jobs with failures today</h2>
-    @if (Model.RecentFailingJobs.Count == 0) { <div class="fb-empty">No failures today.</div> }
-    else
-    {
-        <table class="fb-table">
-            <thead><tr><th>Job</th><th>Failures</th><th>Last failure (UTC)</th></tr></thead>
-            <tbody>
-            @foreach (var j in Model.RecentFailingJobs)
-            {
-                <tr><td>@j.JobName</td><td><span class="fb-badge fail">@j.Failed</span></td><td>@j.LastRunUtc.ToString("u")</td></tr>
-            }
-            </tbody>
-        </table>
-    }
+<div class="fb-card card-fail">
+    <h2><i class="bi bi-exclamation-triangle-fill text-danger me-1"></i> Danger zone</h2>
+    <p>When on, the kill switch stops the Worker from starting any new run cluster-wide &mdash; file transfers and batch process jobs alike. Use only for an emergency stop.</p>
+    <form method="post" asp-action="ToggleKillSwitch">
+        <button type="submit" class="btn-fb @(Model.KillSwitchOn ? "danger" : "secondary")">
+            <i class="bi bi-power me-1"></i>@(Model.KillSwitchOn ? "Turn kill switch off" : "Turn kill switch on")
+        </button>
+        @if (Model.KillSwitchOn) { <span class="fb-badge fail ms-2">Kill switch is ON</span> }
+    </form>
 </div>

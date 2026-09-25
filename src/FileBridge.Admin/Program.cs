@@ -30,6 +30,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 builder.Services.AddFileBridgeInfrastructure(builder.Configuration, nodeRole: "Admin");
 builder.Services.AddScoped<FileBridge.Admin.Services.JobService>();
+builder.Services.AddScoped<FileBridge.Admin.Services.ProcessJobService>();
 builder.Services.AddScoped<FileBridge.Admin.Services.RequestService>();
 
 builder.Services.AddControllersWithViews(o => o.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute()));

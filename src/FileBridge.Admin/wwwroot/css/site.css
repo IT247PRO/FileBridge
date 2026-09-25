@@ -1,4 +1,12 @@
 /* FileBridge admin. Quiet operational surface; the one expressive element is the route lane on job rows. */
+
+/* Self-hosted Inter (matches the EdggeUI AirFlow reference's primary typeface) -- CSP allows
+   only 'self' for style-src/font-src, so these are vendored files, not a Google Fonts <link>. */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/inter-400.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/inter-500.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("../fonts/inter-600.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url("../fonts/inter-700.woff2") format("woff2"); }
+
 :root {
     --paper: #F7F8FA;
     --surface: #FFFFFF;
@@ -12,7 +20,7 @@
     --fail: #B83A3A;
     --quar: #6B4FA0;
     --run: #2E6FA8;
-    --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    --font-ui: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
     --font-data: "Cascadia Mono", "Cascadia Code", Consolas, monospace;
     --bs-body-font-family: var(--font-ui);
     --bs-body-color: var(--ink);
@@ -22,6 +30,43 @@
     --bs-link-color: var(--primary);
     --bs-link-color-rgb: 46, 74, 125;
     --bs-border-color: var(--rule);
+
+    /* Spacing scale (4px base grid) */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
+    --space-8: 3rem;
+
+    /* Radius / elevation */
+    --radius-sm: 6px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-pill: 999px;
+    --shadow-sm: 0 1px 2px rgba(27, 36, 48, 0.06), 0 1px 1px rgba(27, 36, 48, 0.04);
+    --shadow-md: 0 6px 16px rgba(27, 36, 48, 0.08), 0 1px 2px rgba(27, 36, 48, 0.05);
+
+    /* Job/run status colors: Active, Disabled, Running, Completed, Failed, Warning,
+       Pending, Scheduled, Paused, Quarantined -- aliased onto the base palette above
+       plus two new hues (scheduled, pending) for states the base palette didn't cover. */
+    --scheduled: #4A5FB0;
+    --pending: #6B7280;
+    /* "Kind" identity (transfer vs batch process job) is orthogonal to run status, so it gets its own pair
+       rather than reusing a status color -- avoids e.g. batch items looking like they're "quarantined". */
+    --batch: #0F766E;
+    --batch-soft: #E3F3F1;
+    --status-active: var(--ok);
+    --status-disabled: var(--ink-soft);
+    --status-paused: var(--warn);
+    --status-scheduled: var(--scheduled);
+    --status-pending: var(--pending);
+    --status-running: var(--run);
+    --status-succeeded: var(--ok);
+    --status-failed: var(--fail);
+    --status-warning: var(--warn);
+    --status-quarantined: var(--quar);
 }
 
 body { font-size: 0.9375rem; line-height: 1.5; }
@@ -34,119 +79,45 @@ h2 { font-size: 1.0625rem; font-weight: 600; margin: 1.75rem 0 0.75rem; }
 .btn-primary { --bs-btn-bg: var(--primary); --bs-btn-border-color: var(--primary); --bs-btn-hover-bg: #243B64; --bs-btn-hover-border-color: #243B64; }
 .btn-outline-primary { --bs-btn-color: var(--primary); --bs-btn-border-color: var(--primary); --bs-btn-hover-bg: var(--primary); --bs-btn-hover-border-color: var(--primary); }
 
-/* Shell */
-.shell { display: grid; grid-template-columns: 13.5rem 1fr; min-height: 100vh; }
-.rail { background: var(--ink); color: #C9D1DC; display: flex; flex-direction: column; padding: 1.25rem 0.75rem; gap: 0.125rem; position: sticky; top: 0; height: 100vh; }
-.rail a { color: #C9D1DC; text-decoration: none; padding: 0.4rem 0.75rem; border-radius: 6px; }
-.rail a:hover { background: rgba(255,255,255,0.06); color: #fff; }
-.rail a.active { background: rgba(255,255,255,0.1); color: #fff; box-shadow: inset 3px 0 0 #8FB3E8; }
-.rail .brand { color: #fff; font-weight: 600; font-size: 1.05rem; display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.25rem; }
-.brand-mark { width: 22px; height: 12px; border-top: 2px solid #8FB3E8; border-bottom: 2px solid #8FB3E8; position: relative; }
-.brand-mark::after { content: ""; position: absolute; left: 50%; top: 1px; width: 2px; height: 6px; background: #8FB3E8; }
-.rail-foot { margin-top: auto; font-size: 0.8rem; padding: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1); word-break: break-all; }
-.rail-foot .muted { color: #8C97A6; }
-.content { padding: 2rem clamp(1rem, 3vw, 2.5rem) 4rem; max-width: 1280px; }
-.page-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.75rem 1.25rem; margin-bottom: 1.5rem; }
-.page-head p { margin: 0; flex-basis: 100%; max-width: 72ch; }
-.page-head .actions, .page-head > .btn { margin-left: auto; }
-.actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
-
-/* Messages */
-.flash { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.25rem; border-left: 4px solid; background: var(--surface); white-space: pre-line; }
-.flash:empty, .flash.validation-summary-valid { display: none; }
-.flash ul { margin: 0; padding-left: 1.1rem; }
-.flash-ok { border-color: var(--ok); }
-.flash-fail { border-color: var(--fail); }
-.flash-warn { border-color: var(--warn); }
-.secret { background: var(--paper); padding: 0.5rem; user-select: all; white-space: pre-wrap; word-break: break-all; }
-.empty { padding: 2rem; background: var(--surface); border: 1px dashed var(--rule); border-radius: 8px; color: var(--ink-soft); }
-
-/* Status */
-.badge-st { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
-.st-ok { color: var(--ok); } .st-fail { color: var(--fail); } .st-quar { color: var(--quar); } .st-run { color: var(--run); } .st-muted { color: var(--ink-soft); }
-.st-ok-text { color: var(--ok); } .st-fail-text { color: var(--fail); } .st-quar-text { color: var(--quar); } .st-warn-text { color: var(--warn); }
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.5rem; }
-.dot-ok { background: var(--ok); } .dot-fail { background: var(--fail); }
-.row-stale td { color: var(--ink-soft); }
-.event-list { list-style: none; padding: 0; margin: 0; }
-.event-list li { padding: 0.6rem 0; border-bottom: 1px solid var(--rule); }
-.event-msg { font-size: 0.82rem; color: var(--ink-soft); margin-top: 0.15rem; max-width: 90ch; overflow-wrap: anywhere; }
-
-/* Overview tally: a single ledger line rather than cards */
-.tally { display: flex; flex-wrap: wrap; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--rule); margin-bottom: 1.5rem; }
-.tally-cell { padding: 1rem 2rem 1rem 0; margin-right: 2rem; }
-.tally-cell + .tally-cell { border-left: 1px solid var(--rule); padding-left: 2rem; margin-right: 0; }
-.tally-cell a { text-decoration: none; color: inherit; }
-.tally-n { display: block; font-size: 2rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); gap: 2rem; }
-
-/* Jobs: the route lane */
-.jobs { list-style: none; padding: 0; margin: 0; }
-.job { display: grid; grid-template-columns: 1fr; gap: 0.5rem; padding: 1rem 0 1.1rem; border-bottom: 1px solid var(--rule); }
-.job-title { display: flex; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; }
-.job-name { font-weight: 600; font-size: 1.05rem; color: var(--ink); text-decoration: none; }
-.job-name:hover { text-decoration: underline; }
-.job-state { font-size: 0.75rem; font-weight: 600; }
-.state-active { color: var(--ok); } .state-paused { color: var(--warn); } .state-disabled { color: var(--ink-soft); }
-.job-idle .route-line span { animation: none; background: var(--rule); }
-.route { display: grid; grid-template-columns: minmax(0, 1fr) minmax(4rem, 10rem) minmax(0, 1fr); align-items: center; gap: 0.75rem; }
-.route-end { display: flex; flex-wrap: wrap; gap: 0.25rem 0.6rem; align-items: baseline; padding: 0.5rem 0.75rem; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; min-width: 0; }
-.route-end .path { color: var(--ink-soft); overflow-wrap: anywhere; }
-.proto { font-family: var(--font-data); font-size: 0.7rem; font-weight: 600; color: var(--primary); background: var(--primary-soft); padding: 0.05rem 0.4rem; border-radius: 3px; }
-.route-line { position: relative; height: 2px; background: repeating-linear-gradient(90deg, var(--primary) 0 6px, transparent 6px 10px); }
-.route-line::after { content: ""; position: absolute; right: -2px; top: -4px; border-left: 7px solid var(--primary); border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
-.route-line span { position: absolute; top: -3px; left: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); animation: travel 3.2s linear infinite; }
-@keyframes travel { from { left: 0; } to { left: calc(100% - 8px); } }
-@media (prefers-reduced-motion: reduce) { .route-line span { animation: none; left: calc(50% - 4px); } }
-.job-last { display: flex; gap: 0.6rem; align-items: baseline; font-size: 0.875rem; }
-.job-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
-
-/* Forms */
-.job-form .tab-content { background: var(--surface); border: 1px solid var(--rule); border-top: 0; padding: 1.5rem; border-radius: 0 0 8px 8px; }
-.narrow-form { max-width: 52rem; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 1.5rem; }
-.form-foot { display: flex; gap: 0.75rem; align-items: center; margin-top: 1.5rem; }
-.coll-row { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; padding: 0.75rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 0.5rem; background: var(--paper); }
-.coll-row .input-group { flex: 1 1 18rem; }
-.coll-grid label { display: flex; flex-direction: column; font-size: 0.8rem; color: var(--ink-soft); gap: 0.2rem; flex: 1 1 8rem; }
-.coll-grid label.wide { flex: 3 1 16rem; }
-.coll-grid .form-check label, .coll-grid .days label { flex-direction: row; font-size: 0.85rem; color: var(--ink); }
-.filters { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; margin-bottom: 1.25rem; }
-.filters label { display: flex; flex-direction: column; font-size: 0.8rem; color: var(--ink-soft); gap: 0.2rem; }
-.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 0.25rem 1.25rem 1.25rem; margin-bottom: 1.5rem; }
-.facts { display: grid; grid-template-columns: 9rem 1fr; gap: 0.4rem 1rem; background: var(--surface); padding: 1rem 1.25rem; border: 1px solid var(--rule); border-radius: 8px; }
-.facts dt { font-weight: 500; color: var(--ink-soft); } .facts dd { margin: 0; overflow-wrap: anywhere; }
-.json { background: var(--paper); border: 1px solid var(--rule); padding: 0.75rem; border-radius: 6px; max-height: 28rem; overflow: auto; white-space: pre-wrap; }
-.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; margin-bottom: 1rem; }
-.seg a { padding: 0.35rem 0.9rem; text-decoration: none; color: var(--ink); }
-.seg a.active { background: var(--primary); color: #fff; }
-.pager { display: flex; gap: 1rem; align-items: center; }
-.browse-list { list-style: none; padding: 0; margin: 0; }
-.browse-list li { padding: 0.35rem 0.25rem; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; gap: 1rem; }
-.browse-list button.linkish { background: none; border: 0; padding: 0; color: var(--primary); text-align: left; }
-.working { color: var(--ink-soft); }
-
-@media (max-width: 800px) {
-    .shell { grid-template-columns: 1fr; }
-    .rail { position: static; height: auto; flex-direction: row; flex-wrap: wrap; }
-    .rail-foot { display: none; }
-    .route { grid-template-columns: 1fr; }
-    .route-line { width: 2px; height: 1.5rem; margin-left: 1.5rem; background: var(--primary); }
-    .route-line::after, .route-line span { display: none; }
-    .tally-cell + .tally-cell { border-left: 0; padding-left: 0; }
-}
-
 /* ---- "fb-" component vocabulary used across the Views ---- */
 
-/* Shell */
-.fb-shell { display: grid; grid-template-columns: 13.5rem 1fr; min-height: 100vh; }
-.fb-rail { background: var(--ink); color: #C9D1DC; display: flex; flex-direction: column; padding: 1.25rem 0.75rem; gap: 0.125rem; position: sticky; top: 0; height: 100vh; }
-.fb-brand { color: #fff; font-weight: 600; font-size: 1.05rem; margin-bottom: 1.25rem; }
-.fb-link { color: #C9D1DC; text-decoration: none; padding: 0.4rem 0.75rem; border-radius: 6px; display: block; }
+/* Page header (title + optional description + right-aligned actions) */
+.fb-page-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 0.75rem 1.5rem; margin-bottom: 1.5rem; }
+.fb-page-header-text p { margin: 0.25rem 0 0; max-width: 72ch; }
+.fb-page-header-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+
+/* Pager */
+.fb-pager { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem 1.5rem; padding: 0.75rem 1rem; margin-top: 1rem; color: var(--ink-soft); font-size: 0.875rem; }
+.fb-pager-links { display: flex; gap: 1rem; }
+
+/* Shell -- the rounded, bordered "floating panel" main area echoes the AirFlow reference's
+   signature framed content region (its aside/main sit on a dark base with main inset at a
+   large radius + border + shadow); adapted here to FileBridge's simpler single-rail nav. */
+.fb-shell { display: grid; grid-template-columns: 15rem 1fr; min-height: 100vh; background: var(--ink); gap: 0.75rem; padding: 0.75rem; }
+.fb-rail { background: var(--ink); color: #C9D1DC; display: flex; flex-direction: column; padding: 1.25rem 0.75rem; gap: 0.125rem; position: sticky; top: 0.75rem; height: calc(100vh - 1.5rem); }
+.fb-brand { color: #fff; font-weight: 600; font-size: 1.05rem; margin-bottom: 1.25rem; padding: 0 0.75rem; }
+.fb-link { color: #C9D1DC; text-decoration: none; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 0.65rem; font-size: 0.875rem; }
+.fb-link i { font-size: 1rem; width: 1.1rem; text-align: center; flex-shrink: 0; }
 .fb-link:hover { background: rgba(255,255,255,0.06); color: #fff; }
+.fb-link.active { background: rgba(255,255,255,0.1); color: #fff; box-shadow: inset 3px 0 0 #8FB3E8; font-weight: 600; }
 .fb-rail-spacer { margin-top: auto; }
-.fb-user { font-size: 0.8rem; padding: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1); color: #8C97A6; word-break: break-all; }
-.fb-main { padding: 2rem clamp(1rem, 3vw, 2.5rem) 4rem; max-width: 1280px; }
-.fb-flash { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.25rem; border-left: 4px solid var(--primary); background: var(--surface); white-space: pre-line; }
+.fb-user { font-size: 0.8rem; padding: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1); color: #8C97A6; word-break: break-all; display: flex; align-items: center; gap: 0.6rem; }
+.fb-user i { font-size: 1.1rem; flex-shrink: 0; }
+.fb-main { padding: 2rem clamp(1rem, 3vw, 2.5rem) 4rem; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); min-height: calc(100vh - 1.5rem); }
+.fb-main > * { max-width: 1280px; }
+
+/* Toast (server flash message) */
+.fb-toast-stack { z-index: 1090; }
+.fb-toast { border: 1px solid var(--rule); border-left: 4px solid var(--status-succeeded); border-radius: var(--radius-sm); box-shadow: var(--shadow-md); background: var(--surface); min-width: 22rem; }
+.fb-toast i { font-size: 1.1rem; line-height: 1.4; }
+.fb-toast.success { border-left-color: var(--status-succeeded); }
+.fb-toast.success i { color: var(--status-succeeded); }
+.fb-toast.warning { border-left-color: var(--status-warning); }
+.fb-toast.warning i { color: var(--status-warning); }
+.fb-toast.danger { border-left-color: var(--status-failed); }
+.fb-toast.danger i { color: var(--status-failed); }
+.fb-toast.info { border-left-color: var(--status-running); }
+.fb-toast.info i { color: var(--status-running); }
 
 /* Buttons */
 .btn-fb { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.9rem; border-radius: 6px; border: 1px solid var(--primary); background: var(--primary); color: #fff; font-size: 0.875rem; font-weight: 500; cursor: pointer; text-decoration: none; line-height: 1.4; }
@@ -158,28 +129,49 @@ h2 { font-size: 1.0625rem; font-weight: 600; margin: 1.75rem 0 0.75rem; }
 .btn-fb:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* Cards, tables, text, badges */
-.fb-card { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; }
+.fb-card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-sm); }
 .fb-card.card-warn { border-color: var(--warn); }
-.fb-card.card-fail { border-color: var(--fail); }
+.fb-card.card-fail { border-color: var(--fail); background: #FBF1F1; }
 .fb-table { width: 100%; border-collapse: collapse; }
 .fb-table th, .fb-table td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--rule); vertical-align: top; }
 .fb-table th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ink-soft); font-weight: 600; }
-.fb-empty { padding: 1.5rem; text-align: center; color: var(--ink-soft); background: var(--surface); border: 1px dashed var(--rule); border-radius: 8px; }
+.fb-table tbody tr:hover { background: var(--paper); }
+.fb-empty { padding: 1.5rem; text-align: center; color: var(--ink-soft); background: var(--surface); border: 1px dashed var(--rule); border-radius: var(--radius-md); }
 .fb-mono { font-family: var(--font-data); font-size: 0.85em; }
-.fb-badge { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
-.fb-badge.ok { color: var(--ok); }
-.fb-badge.fail { color: var(--fail); }
-.fb-badge.warn { color: var(--warn); }
-.fb-badge.muted { color: var(--ink-soft); }
-.fb-badge.quarantine { color: var(--quar); }
+.fb-badge { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: var(--radius-pill); border: 1px solid currentColor; white-space: nowrap; }
+.fb-badge.ok, .fb-badge.active, .fb-badge.succeeded { color: var(--status-succeeded); }
+.fb-badge.fail, .fb-badge.failed { color: var(--status-failed); }
+.fb-badge.warn, .fb-badge.paused { color: var(--status-warning); }
+.fb-badge.muted, .fb-badge.disabled { color: var(--status-disabled); }
+.fb-badge.quarantine, .fb-badge.quarantined { color: var(--status-quarantined); }
+.fb-badge.running { color: var(--status-running); }
+.fb-badge.scheduled { color: var(--status-scheduled); }
+.fb-badge.pending { color: var(--status-pending); }
 .fb-textlink { color: var(--primary); text-decoration: none; }
 .fb-textlink:hover { text-decoration: underline; }
 
+/* Live "actively running right now" indicator: a small solid dot plus an expanding, fading ring around it.
+   Uses currentColor throughout so it automatically matches whatever badge/text color it's placed inside
+   (blue inside a .fb-badge.running, etc.) instead of a color hardcoded to one context. */
+.fb-live-dot { display: inline-block; position: relative; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 1px; }
+.fb-live-dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; background: currentColor; opacity: 0.5; animation: fb-live-pulse 1.6s ease-out infinite; }
+@keyframes fb-live-pulse { 0% { transform: scale(0.5); opacity: 0.5; } 100% { transform: scale(2.2); opacity: 0; } }
+
+/* "Kind" chip: distinguishes a file-transfer job from a batch process job wherever the two are mixed together
+   (the combined Upcoming card). Deliberately not a status color -- see the --batch token comment above. */
+.fb-kind { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: var(--radius-pill); white-space: nowrap; }
+.fb-kind.transfer { color: var(--primary); background: var(--primary-soft); }
+.fb-kind.batch { color: var(--batch); background: var(--batch-soft); }
+
 /* Dashboard stat tiles */
 .fb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-.fb-stat { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 1rem 1.25rem; }
+.fb-stat { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-md); padding: 1rem 1.25rem; box-shadow: var(--shadow-sm); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.fb-stat:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
 .fb-stat .n { font-size: 2rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .fb-stat .l { font-size: 0.8rem; color: var(--ink-soft); margin-top: 0.25rem; }
+.fb-stat-group-title { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ink-soft); margin-bottom: 0.6rem; }
+.fb-stat-group-title i { font-size: 0.95rem; }
+.fb-stat-group.batch .fb-stat-group-title { color: var(--batch); }
 
 /* Jobs list: source -> destination lane */
 .fb-lane { display: flex; align-items: center; gap: 0.5rem; }
@@ -190,11 +182,22 @@ h2 { font-size: 1.0625rem; font-weight: 600; margin: 1.75rem 0 0.75rem; }
 .fb-form { max-width: 52rem; }
 .fb-form .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; margin-bottom: 1rem; }
 .fb-form label { display: block; font-size: 0.8rem; color: var(--ink-soft); margin-bottom: 0.25rem; }
+.fb-form .hint { font-size: 0.78rem; color: var(--ink-soft); margin-top: 0.35rem; line-height: 1.4; }
+.fb-form .tab-intro { color: var(--ink-soft); font-size: 0.9rem; max-width: 62ch; margin-bottom: 1.5rem; }
+.fb-form .field-group-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); font-weight: 600; margin: 1.75rem 0 0.75rem; padding-top: 1.25rem; border-top: 1px solid var(--rule); }
+.fb-form .field-group-title:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+.fb-form .field-group-title i { color: var(--primary); margin-right: 0.4rem; }
 .fb-form input:not([type="checkbox"]):not([type="radio"]), .fb-form select, .fb-form textarea { width: 100%; padding: 0.45rem 0.6rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); color: var(--ink); font: inherit; }
 .checkline { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
 .checkline label { margin: 0; }
 .fb-repeat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)) auto; gap: 0.75rem; align-items: end; padding: 0.75rem; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 0.5rem; background: var(--paper); }
 .fb-remove-row { align-self: end; }
+
+/* Rendered by site.js inside the shared modal (Test/Browse/Run/DryRun results) */
+.working { color: var(--ink-soft); }
+.browse-list { list-style: none; padding: 0; margin: 0; }
+.browse-list li { padding: 0.35rem 0.25rem; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; gap: 1rem; }
+.browse-list button.linkish { background: none; border: 0; padding: 0; color: var(--primary); text-align: left; }
 
 /* Small utilities for values that Bootstrap's spacing scale doesn't cover exactly */
 .pre-wrap { white-space: pre-wrap; }
@@ -206,3 +209,16 @@ h2 { font-size: 1.0625rem; font-weight: 600; margin: 1.75rem 0 0.75rem; }
 .text-xs { font-size: 0.8rem; }
 .pad-tight { padding: 6px 0; }
 .divider-top { border-top: 1px solid var(--rule); }
+
+@media (max-width: 800px) {
+    .fb-shell { grid-template-columns: 1fr; gap: 0.5rem; padding: 0.5rem; }
+    .fb-rail { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; border-radius: 14px; }
+    .fb-brand { margin-bottom: 0; margin-right: auto; }
+    .fb-link span { display: none; }
+    .fb-link { padding: 0.5rem; }
+    .fb-rail-spacer { display: none; }
+    .fb-user span { display: none; }
+    .fb-main { height: auto; border-radius: 14px; padding: 1.25rem 1rem 3rem; }
+    .fb-lane { flex-direction: column; align-items: stretch; }
+    .fb-lane .track { width: 2px; height: 1.25rem; min-width: 0; margin-left: 0.75rem; }
+}

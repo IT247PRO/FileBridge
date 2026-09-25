@@ -20,11 +20,14 @@ public sealed class FileBridgeDbContext(DbContextOptions<FileBridgeDbContext> op
     public DbSet<BlackoutWindow> BlackoutWindows => Set<BlackoutWindow>();
     public DbSet<GlobalSetting> GlobalSettings => Set<GlobalSetting>();
     public DbSet<RoleMapping> RoleMappings => Set<RoleMapping>();
+    public DbSet<ProcessJob> ProcessJobs => Set<ProcessJob>();
+    public DbSet<ProcessEnvironmentVariable> ProcessEnvironmentVariables => Set<ProcessEnvironmentVariable>();
 
     public DbSet<TransferHistory> TransferHistories => Set<TransferHistory>();
     public DbSet<FileLease> FileLeases => Set<FileLease>();
     public DbSet<Quarantine> Quarantines => Set<Quarantine>();
     public DbSet<RunRequest> RunRequests => Set<RunRequest>();
+    public DbSet<ProcessRunHistory> ProcessRunHistories => Set<ProcessRunHistory>();
     public DbSet<NodeHeartbeat> NodeHeartbeats => Set<NodeHeartbeat>();
     public DbSet<JobVersion> JobVersions => Set<JobVersion>();
     public DbSet<ChangeRequest> ChangeRequests => Set<ChangeRequest>();
@@ -62,6 +65,14 @@ public sealed class FileBridgeDbContext(DbContextOptions<FileBridgeDbContext> op
         b.Entity<GlobalSetting>().HasKey(x => x.SettingKey);
         b.Entity<RoleMapping>().HasIndex(x => new { x.AdGroup, x.AppRoleId }).IsUnique();
 
+        b.Entity<ProcessJob>(e =>
+        {
+            e.HasIndex(x => x.Name).IsUnique();
+            e.HasMany(x => x.EnvironmentVariables).WithOne().HasForeignKey(x => x.ProcessJobId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.NotificationRules).WithOne().HasForeignKey(x => x.ProcessJobId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.BlackoutWindows).WithOne().HasForeignKey(x => x.ProcessJobId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         b.Entity<TransferHistory>(e =>
         {
             e.HasOne(x => x.Job).WithMany().HasForeignKey(x => x.JobId).OnDelete(DeleteBehavior.Restrict);
@@ -78,12 +89,22 @@ public sealed class FileBridgeDbContext(DbContextOptions<FileBridgeDbContext> op
             e.HasOne<JobFolderMap>().WithMany().HasForeignKey(x => x.FolderMapId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne<TransferHistory>().WithMany().HasForeignKey(x => x.TransferHistoryId).OnDelete(DeleteBehavior.SetNull);
         });
-        b.Entity<RunRequest>().HasIndex(x => new { x.RequestStatusId, x.Id });
+        b.Entity<RunRequest>(e =>
+        {
+            e.HasIndex(x => new { x.RequestStatusId, x.Id });
+            e.HasOne<ProcessJob>().WithMany().HasForeignKey(x => x.ProcessJobId).OnDelete(DeleteBehavior.Cascade);
+        });
         b.Entity<NodeHeartbeat>().HasKey(x => new { x.NodeName, x.NodeRole });
         b.Entity<JobVersion>(e =>
         {
             e.HasIndex(x => new { x.JobId, x.Version }).IsUnique();
             e.HasOne<Job>().WithMany().HasForeignKey(x => x.JobId).OnDelete(DeleteBehavior.Cascade);
+        });
+        b.Entity<ProcessRunHistory>(e =>
+        {
+            e.HasOne(x => x.ProcessJob).WithMany().HasForeignKey(x => x.ProcessJobId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.ProcessJobId, x.StartedUtc });
+            e.HasIndex(x => new { x.StatusId, x.NodeName });
         });
 
         foreach (var et in b.Model.GetEntityTypes())

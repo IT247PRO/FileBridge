@@ -1,0 +1,50 @@
+@model List<ProcessRunHistory>
+@{ ViewData["Title"] = "Batch process run history"; }
+<page-header title="@($"Run history — {ViewBag.ProcessJobName}")" description="Most recent 200 runs, newest first."></page-header>
+<div class="fb-card">
+<table class="fb-table">
+    <thead><tr><th>Started (UTC)</th><th>Status</th><th>PID</th><th>Exit code</th><th>Duration</th><th>Triggered by</th><th>Node</th><th></th></tr></thead>
+    <tbody>
+    @if (Model.Count == 0)
+    {
+        <tr><td colspan="8" class="fb-empty">No runs yet.</td></tr>
+    }
+    @foreach (var h in Model)
+    {
+        var badge = h.StatusId switch
+        {
+            ProcessRunStatus.Succeeded => "ok",
+            ProcessRunStatus.Failed or ProcessRunStatus.TimedOut => "fail",
+            ProcessRunStatus.Killed or ProcessRunStatus.Lost => "warn",
+            _ => "muted"
+        };
+        <tr>
+            <td class="fb-mono text-xs">@h.StartedUtc.ToString("u")</td>
+            <td><span class="fb-badge @badge">@h.StatusId</span></td>
+            <td class="fb-mono">@(h.Pid?.ToString() ?? "-")</td>
+            <td class="fb-mono">@(h.ExitCode?.ToString() ?? "-")</td>
+            <td class="fb-mono">@(h.DurationMs is { } ms ? $"{ms / 1000.0:0.0}s" : "-")</td>
+            <td>@h.TriggeredBy</td>
+            <td>@h.NodeName</td>
+            <td>
+                @if (!string.IsNullOrEmpty(h.StdOutTail) || !string.IsNullOrEmpty(h.StdErrTail) || !string.IsNullOrEmpty(h.ErrorMessage))
+                {
+                    <button type="button" class="btn-fb secondary" data-bs-toggle="collapse" data-bs-target="#out-@h.Id">Output</button>
+                }
+            </td>
+        </tr>
+        @if (!string.IsNullOrEmpty(h.StdOutTail) || !string.IsNullOrEmpty(h.StdErrTail) || !string.IsNullOrEmpty(h.ErrorMessage))
+        {
+            <tr class="collapse" id="out-@h.Id">
+                <td colspan="8">
+                    @if (!string.IsNullOrEmpty(h.ErrorMessage)) { <p class="st-fail-text">@h.ErrorMessage</p> }
+                    @if (!string.IsNullOrEmpty(h.StdOutTail)) { <div class="hint">stdout (last @h.StdOutTail.Length chars)</div><pre class="fb-mono pre-wrap text-xs">@h.StdOutTail</pre> }
+                    @if (!string.IsNullOrEmpty(h.StdErrTail)) { <div class="hint">stderr (last @h.StdErrTail.Length chars)</div><pre class="fb-mono pre-wrap text-xs">@h.StdErrTail</pre> }
+                </td>
+            </tr>
+        }
+    }
+    </tbody>
+</table>
+</div>
+<p><a class="fb-textlink" asp-action="Edit" asp-route-id="@ViewBag.ProcessJobId">Back to job</a></p>

@@ -1,6 +1,6 @@
 @model TransferHistory
 @{ ViewData["Title"] = "Transfer details"; }
-<h1>@Model.FileName</h1>
+<page-header title="@Model.FileName"></page-header>
 <div class="fb-card">
     <table class="fb-table">
         <tr><th>Job</th><td>@Model.Job?.Name</td></tr>

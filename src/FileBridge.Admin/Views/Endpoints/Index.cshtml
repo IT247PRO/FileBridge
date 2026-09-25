@@ -1,7 +1,9 @@
 @model List<Endpoint>
 @{ ViewData["Title"] = "Endpoints"; }
-<h1>Endpoints</h1>
-<p><a class="btn-fb" asp-action="Create">Add endpoint</a></p>
+<page-header title="Endpoints">
+    <a class="btn-fb" asp-action="Create"><i class="bi bi-plus-lg"></i> Add endpoint</a>
+</page-header>
+<div class="fb-card">
 <table class="fb-table">
     <thead><tr><th>Name</th><th>Type</th><th>Host / Base path</th><th>Enabled</th><th></th></tr></thead>
     <tbody>
@@ -12,12 +14,12 @@
             <td>@e.EndpointTypeId</td>
             <td class="fb-mono">@(e.Host ?? e.BaseUrl) @e.BasePath</td>
             <td><span class="fb-badge @(e.IsEnabled ? "ok" : "muted")">@(e.IsEnabled ? "Enabled" : "Disabled")</span></td>
-            <td>
-                <button class="btn-fb secondary" data-fb-action="post-poll" data-fb-url="/Endpoints/TestConnection/@e.Id" data-fb-result="test-@e.Id">Test</button>
+            <td class="text-nowrap">
+                <button class="btn-fb secondary" data-fb-action data-fb-url="/Endpoints/TestConnection/@e.Id" data-fb-title="Test connection: @e.Name" data-fb-render="test">Test</button>
                 <a class="fb-textlink ms-2" asp-action="Edit" asp-route-id="@e.Id">Edit</a>
-                <div id="test-@e.Id" class="mt-2"></div>
             </td>
         </tr>
     }
     </tbody>
 </table>
+</div>

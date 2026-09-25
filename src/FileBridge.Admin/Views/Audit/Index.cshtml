@@ -1,10 +1,11 @@
 @model List<ConfigAudit>
 @{ ViewData["Title"] = "Audit log"; var entities = (List<string>)ViewBag.Entities; }
-<h1>Audit log</h1>
+<page-header title="Audit log"></page-header>
 <form method="get" class="mb-3">
     <select name="entity" asp-items="@(new SelectList(entities))"><option value="">(all)</option></select>
     <button type="submit" class="btn-fb secondary">Filter</button>
 </form>
+<div class="fb-card">
 <table class="fb-table">
     <thead><tr><th>Changed (UTC)</th><th>Entity</th><th>Key</th><th>Action</th><th>By</th></tr></thead>
     <tbody>
@@ -20,4 +21,5 @@
     }
     </tbody>
 </table>
-<p class="fb-empty">@ViewBag.Total total row(s), page @ViewBag.Page.</p>
+<page-pager total="@ViewBag.Total" page="@ViewBag.Page" page-size="50"></page-pager>
+</div>

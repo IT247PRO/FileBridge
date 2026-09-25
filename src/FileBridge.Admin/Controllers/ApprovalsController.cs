@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FileBridge.Admin.Services;
 using FileBridge.Core;
 using FileBridge.Core.Entities;
@@ -15,6 +16,27 @@ public sealed class ApprovalsController(FileBridgeDbContext db, JobService jobs)
         View(await db.ChangeRequests.AsNoTracking().Where(c => c.ApprovalStatusId == ApprovalStatus.Pending)
             .OrderBy(c => c.RequestedUtc).ToListAsync());
 
+    public async Task<IActionResult> Details(long id)
+    {
+        var cr = await db.ChangeRequests.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
+        if (cr is null) return NotFound();
+
+        var pretty = new JsonSerializerOptions { WriteIndented = true };
+        if (cr.EntityName == "Job" && cr.EntityKey is not null && int.TryParse(cr.EntityKey, out var jobId))
+        {
+            var current = await jobs.GetForEditAsync(jobId);
+            if (current is not null) ViewBag.Current = JsonSerializer.Serialize(current, pretty);
+        }
+        try
+        {
+            // Reformat for readability only; the stored payload itself is left untouched (this instance is AsNoTracking).
+            cr.PayloadJson = JsonSerializer.Serialize(JsonSerializer.Deserialize<JsonElement>(cr.PayloadJson), pretty);
+        }
+        catch (JsonException) { /* leave as-is if it doesn't parse */ }
+
+        return View(cr);
+    }
+
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(long id)
     {
@@ -22,6 +44,7 @@ public sealed class ApprovalsController(FileBridgeDbContext db, JobService jobs)
         if (cr is not null && cr.RequestedBy == User.Identity!.Name)
         {
             TempData["Message"] = "You cannot approve your own change request.";
+            TempData["MessageType"] = "warning";
             return RedirectToAction(nameof(Index));
         }
         await jobs.ApproveAsync(id);
