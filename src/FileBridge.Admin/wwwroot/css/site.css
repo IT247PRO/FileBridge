@@ -90,6 +90,13 @@ h2 { font-size: 1.0625rem; font-weight: 600; margin: 1.75rem 0 0.75rem; }
 .fb-pager { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem 1.5rem; padding: 0.75rem 1rem; margin-top: 1rem; color: var(--ink-soft); font-size: 0.875rem; }
 .fb-pager-links { display: flex; gap: 1rem; }
 
+/* Site-wide banner: no Worker node is currently reporting a heartbeat (see ClusterHealthService), so nothing
+   scheduled is actually running anywhere in the cluster. Deliberately outside .fb-shell so it spans the full
+   width above both the nav rail and the content, on every page, not just the dashboard. */
+.fb-alert-bar { display: flex; align-items: center; gap: 0.6rem; background: var(--fail); color: #fff; padding: 0.7rem 1.25rem; font-size: 0.875rem; font-weight: 500; }
+.fb-alert-bar i { font-size: 1rem; flex-shrink: 0; }
+.fb-alert-bar .fb-textlink { color: #fff; text-decoration: underline; margin-left: auto; white-space: nowrap; }
+
 /* Shell -- the rounded, bordered "floating panel" main area echoes the AirFlow reference's
    signature framed content region (its aside/main sit on a dark base with main inset at a
    large radius + border + shadow); adapted here to FileBridge's simpler single-rail nav. */

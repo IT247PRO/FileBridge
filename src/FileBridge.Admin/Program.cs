@@ -32,6 +32,7 @@ builder.Services.AddFileBridgeInfrastructure(builder.Configuration, nodeRole: "A
 builder.Services.AddScoped<FileBridge.Admin.Services.JobService>();
 builder.Services.AddScoped<FileBridge.Admin.Services.ProcessJobService>();
 builder.Services.AddScoped<FileBridge.Admin.Services.RequestService>();
+builder.Services.AddScoped<FileBridge.Admin.Services.ClusterHealthService>();
 
 builder.Services.AddControllersWithViews(o => o.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute()));
 builder.Services.AddAntiforgery(o => o.HeaderName = "X-CSRF-TOKEN");

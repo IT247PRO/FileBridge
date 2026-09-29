@@ -1,4 +1,5 @@
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Xsrf
+@inject FileBridge.Admin.Services.ClusterHealthService ClusterHealth
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,6 +18,22 @@
     @{
         var currentController = ViewContext.RouteData.Values["controller"] as string ?? "";
         string NavClass(string controller) => "fb-link" + (string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase) ? " active" : "");
+        var workerStatus = await ClusterHealth.GetWorkerStatusAsync();
+    }
+    @if (!workerStatus.Healthy)
+    {
+        <div class="fb-alert-bar">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            @if (!workerStatus.HasAnyWorker)
+            {
+                <span>No Worker node has ever reported in. Scheduled transfers and batch process jobs will not run until a Worker is configured and started.</span>
+            }
+            else
+            {
+                <span>No Worker node has reported in since @workerStatus.LastSeenUtc?.ToString("u") UTC. Scheduled transfers and batch process jobs are not running.</span>
+            }
+            <a class="fb-textlink" asp-controller="Home" asp-action="Index">View cluster nodes</a>
+        </div>
     }
     <div class="fb-shell">
         <nav class="fb-rail">
