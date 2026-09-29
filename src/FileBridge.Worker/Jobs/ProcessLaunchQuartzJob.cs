@@ -18,7 +18,10 @@ namespace FileBridge.Worker.Jobs;
 /// executing" tracking resets on recovery, so a later trigger fire would otherwise be free to launch a second
 /// instance. The explicit "already running" check below closes that gap by asking the actual source of truth
 /// (tblProcessRunHistory) instead of trusting Quartz's in-memory state, and it applies to manual Run Now too,
-/// not just the schedule.
+/// not just the schedule. It also falls back to the live OS process list (see
+/// ProcessLaunchService.AdoptIfAlreadyRunningAsync) for the case tblProcessRunHistory alone can't cover: the
+/// exe is already running but was never launched by FileBridge at all -- started by hand, or by a prior Worker
+/// instance whose tracking row is gone.
 /// </summary>
 [DisallowConcurrentExecution]
 public sealed class ProcessLaunchQuartzJob(FileBridgeDbContext db, ProcessLaunchService launcher, ILogger<ProcessLaunchQuartzJob> log) : IJob
@@ -36,9 +39,14 @@ public sealed class ProcessLaunchQuartzJob(FileBridgeDbContext db, ProcessLaunch
         if (job is null) { log.LogWarning("Process job {ProcessJobId} no longer exists; skipping scheduled run", processJobId); return; }
         if (!job.IsEnabled) { log.LogInformation("Process job {ProcessJobId} is disabled; skipping", processJobId); return; }
 
-        var alreadyRunning = await db.ProcessRunHistories.AsNoTracking()
-            .AnyAsync(h => h.ProcessJobId == processJobId && h.StatusId == ProcessRunStatus.Running, ct);
-        if (alreadyRunning) { log.LogInformation("Process job {ProcessJobId} already has a run in progress; not starting another instance", processJobId); return; }
+        // Checks both tblProcessRunHistory and, if nothing's tracked, the live OS process list for this exe --
+        // closes the gap where the exe is already running but FileBridge never recorded it (started by hand,
+        // or by a prior Worker instance whose tracking row is gone). Either way, adopts it instead of guessing.
+        if (await launcher.AdoptIfAlreadyRunningAsync(processJobId, ct))
+        {
+            log.LogInformation("Process job {ProcessJobId} already has a run in progress (tracked or just adopted); not starting another instance", processJobId);
+            return;
+        }
 
         if (!manual && job.IsPaused) { log.LogInformation("Process job {ProcessJobId} is paused; skipping scheduled run", processJobId); return; }
 

@@ -20,6 +20,18 @@
         return i === 0 ? n + ' B' : v.toFixed(1) + ' ' + u[i];
     }
 
+    // Every server-rendered timestamp shows Central time (see Ui.LocalSortable in C#); this is the one place a
+    // date is formatted client-side, so it's pinned to the same zone explicitly rather than the viewer's own
+    // browser/OS timezone (which toLocaleString() would otherwise silently use).
+    function centralTime(isoUtc) {
+        const parts = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZoneName: 'short'
+        }).formatToParts(new Date(isoUtc));
+        const get = t => parts.find(p => p.type === t)?.value ?? '';
+        return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')} ${get('timeZoneName')}`;
+    }
+
     async function post(url, data) {
         const r = await fetch(url, {
             method: 'POST', credentials: 'same-origin',
@@ -112,7 +124,7 @@
                     target ? h('button', { class: 'btn btn-sm btn-primary', type: 'button', onclick: () => { target.value = r.path || ''; modal().hide(); target.focus(); } }, 'Use this folder') : null),
                 h('ul', { class: 'browse-list' },
                     (r.folders || []).map(f => h('li', null, h('button', { class: 'linkish path', type: 'button', onclick: () => go(f) }, f.split('/').pop() + '/'))),
-                    (r.files || []).map(f => h('li', null, h('span', { class: 'path' }, f.name), h('span', { class: 'muted small num' }, bytes(f.size) + ', ' + new Date(f.lastModifiedUtc).toLocaleString())))),
+                    (r.files || []).map(f => h('li', null, h('span', { class: 'path' }, f.name), h('span', { class: 'muted small num' }, bytes(f.size) + ', ' + centralTime(f.lastModifiedUtc))))),
                 (r.folders || []).length + (r.files || []).length === 0 ? h('p', { class: 'muted' }, 'This folder is empty.') : null,
                 (r.files || []).length === 200 ? h('p', { class: 'muted small' }, 'Showing the 200 newest files.') : null);
         } catch (e) {

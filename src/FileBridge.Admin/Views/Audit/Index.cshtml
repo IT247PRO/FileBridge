@@ -7,12 +7,12 @@
 </form>
 <div class="fb-card">
 <table class="fb-table">
-    <thead><tr><th>Changed (UTC)</th><th>Entity</th><th>Key</th><th>Action</th><th>By</th></tr></thead>
+    <thead><tr><th>Changed</th><th>Entity</th><th>Key</th><th>Action</th><th>By</th></tr></thead>
     <tbody>
     @foreach (var a in Model)
     {
         <tr>
-            <td class="fb-mono">@a.ChangedUtc.ToString("u")</td>
+            <td class="fb-mono">@Ui.LocalSortable(a.ChangedUtc)</td>
             <td>@a.EntityName</td>
             <td>@a.EntityKey</td>
             <td><span class="fb-badge @(a.AuditActionId == AuditAction.Deleted ? "fail" : a.AuditActionId == AuditAction.Added ? "ok" : "warn")">@a.AuditActionId</span></td>

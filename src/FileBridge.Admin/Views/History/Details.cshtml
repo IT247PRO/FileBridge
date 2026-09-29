@@ -8,8 +8,8 @@
         <tr><th>Destination path</th><td class="fb-mono">@Model.DestinationPath</td></tr>
         <tr><th>Status</th><td>@Model.TransferStatusId</td></tr>
         <tr><th>Attempts</th><td>@Model.AttemptCount</td></tr>
-        <tr><th>Started (UTC)</th><td>@Model.StartedUtc.ToString("u")</td></tr>
-        <tr><th>Completed (UTC)</th><td>@(Model.CompletedUtc?.ToString("u") ?? "-")</td></tr>
+        <tr><th>Started</th><td>@Ui.LocalSortable(Model.StartedUtc)</td></tr>
+        <tr><th>Completed</th><td>@Ui.LocalSortable(Model.CompletedUtc)</td></tr>
         <tr><th>Duration</th><td>@(Model.DurationMs is null ? "-" : $"{Model.DurationMs} ms")</td></tr>
         <tr><th>Node</th><td>@Model.NodeName</td></tr>
         <tr><th>Triggered by</th><td>@Model.TriggeredBy</td></tr>

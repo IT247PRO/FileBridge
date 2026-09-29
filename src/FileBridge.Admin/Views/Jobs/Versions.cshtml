@@ -3,13 +3,13 @@
 <page-header title="@($"Versions — {ViewBag.JobName}")"></page-header>
 <div class="fb-card">
 <table class="fb-table">
-    <thead><tr><th>Version</th><th>Created (UTC)</th><th>By</th><th></th></tr></thead>
+    <thead><tr><th>Version</th><th>Created</th><th>By</th><th></th></tr></thead>
     <tbody>
     @foreach (var v in Model)
     {
         <tr>
             <td>@v.Version</td>
-            <td class="fb-mono">@v.CreatedUtc.ToString("u")</td>
+            <td class="fb-mono">@Ui.LocalSortable(v.CreatedUtc)</td>
             <td>@v.CreatedBy</td>
             <td><form method="post" asp-action="Rollback" asp-route-id="@ViewBag.JobId" asp-route-version="@v.Version"><button type="submit" class="btn-fb secondary">Roll back to this version</button></form></td>
         </tr>

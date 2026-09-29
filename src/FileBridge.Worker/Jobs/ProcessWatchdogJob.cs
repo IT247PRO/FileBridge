@@ -2,6 +2,7 @@ using System.Diagnostics;
 using FileBridge.Core;
 using FileBridge.Core.Rules;
 using FileBridge.Infrastructure.Data;
+using FileBridge.Infrastructure.Engine;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 
@@ -13,9 +14,14 @@ namespace FileBridge.Worker.Jobs;
 /// that await is lost and the row would stay Running forever with nothing watching it. This job reconciles
 /// that: it only looks at rows this node itself spawned, and marks any whose PID/start-time no longer
 /// resolves as Lost rather than guessing an outcome.
+///
+/// It also reconciles the opposite gap: a process job with NO tracked run at all, whose exe is nonetheless
+/// already running on this node (started by hand, or left over from a prior Worker instance whose tracking
+/// row didn't survive). Without this, the dashboard would show "nothing running" for an exe that plainly is,
+/// and the next scheduled/manual trigger would launch a duplicate instance instead of recognizing it.
 /// </summary>
 [DisallowConcurrentExecution]
-public sealed class ProcessWatchdogJob(FileBridgeDbContext db, ILogger<ProcessWatchdogJob> log) : IJob
+public sealed class ProcessWatchdogJob(FileBridgeDbContext db, ProcessLaunchService launcher, ILogger<ProcessWatchdogJob> log) : IJob
 {
     public async Task Execute(IJobExecutionContext context)
     {
@@ -37,7 +43,9 @@ public sealed class ProcessWatchdogJob(FileBridgeDbContext db, ILogger<ProcessWa
             if (!stillOurs)
             {
                 history.StatusId = ProcessRunStatus.Lost;
-                history.ErrorMessage = "This node restarted while the process was running; its outcome is unknown.";
+                history.ErrorMessage = history.TriggeredBy.StartsWith("adopted", StringComparison.Ordinal)
+                    ? "The process ended; its exit outcome couldn't be captured because this run was adopted from an already-running process rather than started by FileBridge."
+                    : "This node restarted while the process was running; its outcome is unknown.";
                 history.CompletedUtc = DateTime.UtcNow;
                 log.LogWarning("Process run {RunId} (process job {ProcessJobId}, PID {Pid}) marked Lost: no longer resolvable after a restart",
                     history.RunId, history.ProcessJobId, pid);
@@ -67,5 +75,13 @@ public sealed class ProcessWatchdogJob(FileBridgeDbContext db, ILogger<ProcessWa
         }
 
         await db.SaveChangesAsync(ct);
+
+        // Adopt any exe already running on this node for a job with no tracked run -- including one just
+        // marked Lost above, so a genuinely-still-running process is picked back up in the same tick instead
+        // of waiting for the next one. Process.GetProcessesByName only ever sees local processes, so this is
+        // inherently scoped to this node and can't mistake another Worker node's run for one of its own.
+        var enabledJobIds = await db.ProcessJobs.AsNoTracking().Where(j => j.IsEnabled).Select(j => j.Id).ToListAsync(ct);
+        foreach (var jobId in enabledJobIds)
+            await launcher.AdoptIfAlreadyRunningAsync(jobId, ct);
     }
 }

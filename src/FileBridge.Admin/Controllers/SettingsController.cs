@@ -56,10 +56,12 @@ public sealed class SettingsController(FileBridgeDbContext db, ISecretProtector 
         return RedirectToAction(nameof(Index));
     }
 
+    // The form's inputs are plain <input type="datetime-local">, so what the admin typed is a Central-time
+    // wall-clock value with no offset of its own -- it must be converted, not stored as if it were already UTC.
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddBlackout(DateTime startUtc, DateTime endUtc, string? reason)
+    public async Task<IActionResult> AddBlackout(DateTime startCentral, DateTime endCentral, string? reason)
     {
-        db.BlackoutWindows.Add(new BlackoutWindow { JobId = null, StartUtc = startUtc, EndUtc = endUtc, Reason = reason });
+        db.BlackoutWindows.Add(new BlackoutWindow { JobId = null, StartUtc = Ui.CentralToUtc(startCentral), EndUtc = Ui.CentralToUtc(endCentral), Reason = reason });
         await db.SaveChangesAsync();
         TempData["Message"] = "Global blackout window added.";
         return RedirectToAction(nameof(Index));

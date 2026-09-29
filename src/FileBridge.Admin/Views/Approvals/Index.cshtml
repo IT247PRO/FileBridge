@@ -5,7 +5,7 @@
 @foreach (var c in Model)
 {
     <div class="fb-card">
-        <div><strong>@c.EntityName</strong> @(c.EntityKey is null ? "(new)" : $"#{c.EntityKey}") — requested by @c.RequestedBy on @c.RequestedUtc.ToString("u")
+        <div><strong>@c.EntityName</strong> @(c.EntityKey is null ? "(new)" : $"#{c.EntityKey}") — requested by @c.RequestedBy on @Ui.LocalSortable(c.RequestedUtc)
             <a class="fb-textlink ms-2" asp-action="Details" asp-route-id="@c.Id">Review side-by-side</a></div>
         <details class="mt-2"><summary>View payload</summary><pre class="fb-mono pre-wrap">@c.PayloadJson</pre></details>
         <form method="post" asp-action="Approve" asp-route-id="@c.Id" class="d-inline mt-2"><button type="submit" class="btn-fb">Approve</button></form>

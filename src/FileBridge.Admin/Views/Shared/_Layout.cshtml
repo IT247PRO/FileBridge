@@ -30,7 +30,7 @@
             }
             else
             {
-                <span>No Worker node has reported in since @workerStatus.LastSeenUtc?.ToString("u") UTC. Scheduled transfers and batch process jobs are not running.</span>
+                <span>No Worker node has reported in since @Ui.LocalSortable(workerStatus.LastSeenUtc). Scheduled transfers and batch process jobs are not running.</span>
             }
             <a class="fb-textlink" asp-controller="Home" asp-action="Index">View cluster nodes</a>
         </div>
@@ -39,7 +39,7 @@
         <nav class="fb-rail">
             <div class="fb-brand">FileBridge</div>
             <a class="@NavClass("Home")" href="/"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
-            <a class="@NavClass("Jobs")" href="/Jobs"><i class="bi bi-arrow-left-right"></i><span>Jobs</span></a>
+            <a class="@NavClass("Jobs")" href="/Jobs"><i class="bi bi-arrow-left-right"></i><span>File Transfer Jobs</span></a>
             <a class="@NavClass("ProcessJobs")" href="/ProcessJobs"><i class="bi bi-terminal"></i><span>Batch process jobs</span></a>
             <a class="@NavClass("History")" href="/History"><i class="bi bi-clock-history"></i><span>History</span></a>
             <a class="@NavClass("Quarantine")" href="/Quarantine"><i class="bi bi-shield-exclamation"></i><span>Quarantine</span></a>

@@ -13,7 +13,17 @@ namespace FileBridge.Admin.Controllers;
 [Authorize]
 public sealed class HomeController(FileBridgeDbContext db) : Controller
 {
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index() => View(await BuildDashboardAsync());
+
+    /// <summary>Polled every few seconds by wwwroot/js/dashboard.js to keep the dashboard current without a
+    /// full page reload; renders the same partial the initial page load uses so there's exactly one place
+    /// that builds this markup. Plain polling rather than SignalR/websockets: the Admin tier can run as
+    /// multiple nodes behind a load balancer (see DependencyInjection.cs's Data Protection key-ring comment),
+    /// and a push-based approach would need a backplane (Redis/SQL/Azure SignalR) to fan out across them --
+    /// not worth it for a dashboard where a few seconds of staleness costs nothing.</summary>
+    public async Task<IActionResult> Refresh() => PartialView("_DashboardBody", await BuildDashboardAsync());
+
+    private async Task<DashboardViewModel> BuildDashboardAsync()
     {
         var todayUtc = DateTime.UtcNow.Date;
         var vm = new DashboardViewModel
@@ -68,7 +78,7 @@ public sealed class HomeController(FileBridgeDbContext db) : Controller
             .Concat(upcomingBatch.Select(u => new UpcomingItemRow(UpcomingKind.BatchProcess, u.ProcessJobId, u.ProcessJobName, u.ScheduleType, u.NextRunUtc)))
             .OrderBy(u => u.NextRunUtc).Take(10).ToList();
 
-        return View(vm);
+        return vm;
     }
 
     // Approximated from each enabled job's own cron/interval schedule (the Admin tier never

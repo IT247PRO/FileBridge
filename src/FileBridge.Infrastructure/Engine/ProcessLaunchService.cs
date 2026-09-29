@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 using FileBridge.Core;
 using FileBridge.Core.Entities;
@@ -169,6 +170,115 @@ public sealed class ProcessLaunchService(
         proc.Kill(entireProcessTree: true);
         log.LogInformation("Killed process job {ProcessJobId} PID {Pid}, requested by {RequestedBy}", processJobId, pid, requestedBy);
         // history is finalized by the awaited WaitForExitAsync back in RunAsync, not here.
+    }
+
+    /// <summary>Closes two gaps at once: (1) an exe that's running on this node without any tracked
+    /// ProcessRunHistory row for it -- e.g. someone started it by hand, or a prior Worker instance launched it
+    /// and the tracking row is gone/was never written; and (2) a tracked "Running" row that's gone stale --
+    /// the process actually died since the last watchdog pass (every ~20s), so trusting the row's status flag
+    /// alone could wrongly block a real launch. A row this node owns is always re-verified against the live OS
+    /// process list rather than trusted blindly; a stale one is marked Lost immediately instead of waiting for
+    /// the next watchdog tick. A row owned by another node can't be checked from here (no local OS access to
+    /// that machine), so it's trusted -- that node's own watchdog is responsible for keeping it accurate.
+    /// Called both right before a launch (so a scheduled/manual run never duplicates one already running) and
+    /// periodically by ProcessWatchdogJob (so one started entirely outside FileBridge still shows up as Running
+    /// on the dashboard instead of silently going untracked). Returns true if the job has a genuinely live
+    /// Running row afterwards, whether newly adopted or already tracked -- callers use this to decide whether
+    /// to still launch.</summary>
+    public async Task<bool> AdoptIfAlreadyRunningAsync(int processJobId, CancellationToken ct)
+    {
+        var running = await db.ProcessRunHistories
+            .Where(h => h.ProcessJobId == processJobId && h.StatusId == ProcessRunStatus.Running)
+            .OrderByDescending(h => h.StartedUtc)
+            .FirstOrDefaultAsync(ct);
+
+        if (running is not null)
+        {
+            if (running.NodeName != _node) return true;
+
+            if (running.Pid is not { } trackedPid || running.ProcessStartTimeUtc is not { } trackedStartedUtc)
+                return true; // no PID recorded yet (still "Starting"); trust it rather than guess
+
+            bool stillRunning;
+            try { stillRunning = ProcessIdentity.StartTimeMatches(trackedStartedUtc, Process.GetProcessById(trackedPid).StartTime.ToUniversalTime()); }
+            catch (ArgumentException) { stillRunning = false; }
+
+            if (stillRunning) return true;
+
+            running.StatusId = ProcessRunStatus.Lost;
+            running.ErrorMessage = "The process was no longer running when checked before starting a new run.";
+            running.CompletedUtc = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+            log.LogWarning("Process run {RunId} (process job {ProcessJobId}) marked Lost: PID {Pid} no longer resolves on this " +
+                "node; treating the job as not running", running.RunId, processJobId, trackedPid);
+            // Falls through to the OS-level adoption scan below -- the exe could coincidentally have already
+            // been relaunched outside FileBridge in the same gap, so it's still worth checking before assuming
+            // nothing is running.
+        }
+
+        var job = await db.ProcessJobs.AsNoTracking().FirstOrDefaultAsync(j => j.Id == processJobId, ct);
+        if (job is null) return false;
+
+        var match = FindRunningInstance(job.ExecutablePath, out var ambiguous);
+        if (ambiguous)
+        {
+            log.LogWarning("Process job {ProcessJobId} ({Name}): multiple running '{Exe}' processes found on {Node} with no " +
+                "way to tell which (if any) belongs to this job; not adopting any of them. Kill/launch state may be wrong " +
+                "until only one (or none) remains.", job.Id, job.Name, Path.GetFileName(job.ExecutablePath), _node);
+            return false;
+        }
+        if (match is null) return false;
+
+        var history = new ProcessRunHistory
+        {
+            ProcessJobId = job.Id,
+            RunId = Guid.NewGuid(),
+            TriggeredBy = "adopted (already running)",
+            NodeName = _node,
+            Pid = match.Id,
+            ProcessStartTimeUtc = match.StartTime.ToUniversalTime(),
+            StatusId = ProcessRunStatus.Running,
+            StartedUtc = match.StartTime.ToUniversalTime()
+        };
+        db.ProcessRunHistories.Add(history);
+        await db.SaveChangesAsync(ct);
+        log.LogInformation("Adopted already-running process for job {ProcessJobId} ({Name}): PID {Pid}, started {StartedUtc:u} " +
+            "(no stdout/stderr is available for an adopted run -- FileBridge didn't start it)", job.Id, job.Name, match.Id, history.StartedUtc);
+        return true;
+    }
+
+    /// <summary>Matches by exe filename (Process.GetProcessesByName), then narrows to an exact full-path match
+    /// when the OS lets us read MainModule for that PID (it won't for processes we don't own/can't inspect).
+    /// Exactly one name match with an unreadable path is still adopted (best effort); two or more with no way
+    /// to disambiguate by path is reported back as ambiguous rather than guessing.</summary>
+    private static Process? FindRunningInstance(string executablePath, out bool ambiguous)
+    {
+        ambiguous = false;
+        var name = Path.GetFileNameWithoutExtension(executablePath);
+        if (string.IsNullOrWhiteSpace(name)) return null;
+
+        Process[] candidates;
+        try { candidates = Process.GetProcessesByName(name); }
+        catch { return null; }
+        if (candidates.Length == 0) return null;
+
+        var pathMatches = new List<Process>();
+        var unreadable = new List<Process>();
+        foreach (var p in candidates)
+        {
+            try
+            {
+                if (string.Equals(p.MainModule?.FileName, executablePath, StringComparison.OrdinalIgnoreCase))
+                    pathMatches.Add(p);
+            }
+            catch { unreadable.Add(p); }
+        }
+
+        if (pathMatches.Count == 1) return pathMatches[0];
+        if (pathMatches.Count > 1) { ambiguous = true; return null; }
+        if (unreadable.Count == 1 && candidates.Length == 1) return unreadable[0];
+        if (candidates.Length > 1) { ambiguous = true; return null; }
+        return null;
     }
 
     private static void AppendCapped(StringBuilder sb, string line)

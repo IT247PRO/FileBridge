@@ -9,12 +9,12 @@ else
 {
     <div class="fb-card">
     <table class="fb-table">
-        <thead><tr><th>Held (UTC)</th><th>Job</th><th>File</th><th>Reason</th><th></th></tr></thead>
+        <thead><tr><th>Held</th><th>Job</th><th>File</th><th>Reason</th><th></th></tr></thead>
         <tbody>
         @foreach (var q in Model)
         {
             <tr>
-                <td class="fb-mono">@q.CreatedUtc.ToString("u")</td>
+                <td class="fb-mono">@Ui.LocalSortable(q.CreatedUtc)</td>
                 <td>@q.Job?.Name</td>
                 <td>@System.IO.Path.GetFileName(q.OriginalPath)</td>
                 <td>@q.Reason</td>

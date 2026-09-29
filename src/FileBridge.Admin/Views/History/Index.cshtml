@@ -14,7 +14,7 @@
 
 <div class="fb-card mt-3">
 <table class="fb-table">
-    <thead><tr><th>Started (UTC)</th><th>Job</th><th>File</th><th>Status</th><th>Size</th><th>Duration</th></tr></thead>
+    <thead><tr><th>Started</th><th>Job</th><th>File</th><th>Status</th><th>Size</th><th>Duration</th></tr></thead>
     <tbody>
     @foreach (var h in Model)
     {
@@ -22,7 +22,7 @@
             TransferStatus.Succeeded => "ok", TransferStatus.Failed => "fail",
             TransferStatus.Quarantined => "quarantine", TransferStatus.InProgress => "running", _ => "muted" };
         <tr>
-            <td class="fb-mono">@h.StartedUtc.ToString("u")</td>
+            <td class="fb-mono">@Ui.LocalSortable(h.StartedUtc)</td>
             <td>@h.Job?.Name</td>
             <td><a class="fb-textlink" asp-action="Details" asp-route-id="@h.Id">@h.FileName</a></td>
             <td><span class="fb-badge @badge">@h.TransferStatusId</span></td>
