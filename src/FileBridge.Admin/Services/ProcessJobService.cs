@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FileBridge.Admin.Models;
 using FileBridge.Core;
 using FileBridge.Core.Entities;
@@ -6,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FileBridge.Admin.Services;
 
-public sealed class ProcessJobService(FileBridgeDbContext db, ISecretProtector secrets)
+public sealed class ProcessJobService(FileBridgeDbContext db, ISecretProtector secrets, ICurrentUser user)
 {
     public async Task<List<ProcessJob>> ListAsync() =>
         await db.ProcessJobs.AsNoTracking().OrderBy(j => j.Name).ToListAsync();
@@ -53,6 +54,43 @@ public sealed class ProcessJobService(FileBridgeDbContext db, ISecretProtector s
             errors.Add("Environment variable names must be unique.");
 
         return errors;
+    }
+
+    /// <summary>If approval is required, stages the change in tblChangeRequest instead of applying it.</summary>
+    public async Task<(bool Applied, string Message)> SubmitAsync(ProcessJobEditModel m)
+    {
+        var errors = Validate(m);
+        if (errors.Count > 0) return (false, string.Join(" ", errors));
+
+        if (await GlobalSettings.GetBoolAsync(db, SettingKeys.RequireApproval, default))
+        {
+            db.ChangeRequests.Add(new ChangeRequest
+            {
+                EntityName = "ProcessJob",
+                EntityKey = m.Id == 0 ? null : m.Id.ToString(),
+                PayloadJson = JsonSerializer.Serialize(m),
+                ApprovalStatusId = ApprovalStatus.Pending,
+                RequestedBy = user.Name,
+                RequestedUtc = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+            return (false, "Change submitted for approval.");
+        }
+
+        await ApplyAsync(m);
+        return (true, "Batch process job saved.");
+    }
+
+    public async Task ApproveAsync(long changeRequestId)
+    {
+        var cr = await db.ChangeRequests.FindAsync(changeRequestId) ?? throw new InvalidOperationException("Change request not found.");
+        if (cr.EntityName != "ProcessJob") throw new NotSupportedException($"Approval for entity '{cr.EntityName}' is not implemented.");
+        var model = JsonSerializer.Deserialize<ProcessJobEditModel>(cr.PayloadJson)!;
+        await ApplyAsync(model);
+        cr.ApprovalStatusId = ApprovalStatus.Approved;
+        cr.ReviewedBy = user.Name;
+        cr.ReviewedUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync();
     }
 
     public async Task ApplyAsync(ProcessJobEditModel m)

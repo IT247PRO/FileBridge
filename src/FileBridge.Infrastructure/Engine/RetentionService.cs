@@ -27,6 +27,12 @@ public sealed class RetentionService(FileBridgeDbContext db, ILogger<RetentionSe
             return await db.FileLeases.Where(l => l.CreatedUtc < cutoff && l.CompletedUtc != null).OrderBy(l => l.Id).Take(BatchSize).ExecuteDeleteAsync(ct);
         });
 
+        await PurgeAsync("tblProcessRunHistory", ct, async () =>
+        {
+            var cutoff = now.AddDays(-await GlobalSettings.GetIntAsync(db, SettingKeys.HistoryDays, 90, ct));
+            return await db.ProcessRunHistories.Where(h => h.StartedUtc < cutoff).OrderBy(h => h.Id).Take(BatchSize).ExecuteDeleteAsync(ct);
+        });
+
         await PurgeAsync("tblRunRequest", ct, async () =>
         {
             var cutoff = now.AddDays(-await GlobalSettings.GetIntAsync(db, SettingKeys.RequestDays, 14, ct));
@@ -55,9 +61,9 @@ public sealed class RetentionService(FileBridgeDbContext db, ILogger<RetentionSe
         }
 
         var logCutoff = now.AddDays(-await GlobalSettings.GetIntAsync(db, SettingKeys.LogDays, 30, ct));
-        var deletedLogs = await db.Database.ExecuteSqlInterpolatedAsync(
-            $"DELETE TOP ({BatchSize}) FROM dbo.tblApplicationLog WHERE TimeStamp < {logCutoff}", ct);
-        if (deletedLogs > 0) log.LogInformation("Retention: removed {Count} tblApplicationLog row(s)", deletedLogs);
+        await PurgeAsync("tblApplicationLog", ct, async () =>
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE TOP ({BatchSize}) FROM dbo.tblApplicationLog WHERE TimeStamp < {logCutoff}", ct));
     }
 
     private async Task PurgeAsync(string what, CancellationToken ct, Func<Task<int>> delete)

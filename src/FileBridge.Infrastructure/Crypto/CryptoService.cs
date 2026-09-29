@@ -140,19 +140,29 @@ public sealed class CryptoService(ISecretProtector secrets) : ICryptoService
 }
 
 /// <summary>Read-only window over the next N bytes of a stream. Does not dispose the inner stream.</summary>
-internal sealed class BoundedStream(Stream inner, long length) : Stream
+internal sealed class BoundedStream : Stream
 {
-    private long _remaining = length;
+    private readonly Stream _inner;
+    private readonly long _length;
+    private long _remaining;
+
+    public BoundedStream(Stream inner, long length)
+    {
+        _inner = inner;
+        _length = length;
+        _remaining = length;
+    }
+
     public override bool CanRead => true;
     public override bool CanSeek => false;
     public override bool CanWrite => false;
-    public override long Length => length;
-    public override long Position { get => length - _remaining; set => throw new NotSupportedException(); }
+    public override long Length => _length;
+    public override long Position { get => _length - _remaining; set => throw new NotSupportedException(); }
 
     public override int Read(byte[] buffer, int offset, int count)
     {
         if (_remaining <= 0) return 0;
-        var n = inner.Read(buffer, offset, (int)Math.Min(count, _remaining));
+        var n = _inner.Read(buffer, offset, (int)Math.Min(count, _remaining));
         _remaining -= n;
         return n;
     }
@@ -160,7 +170,7 @@ internal sealed class BoundedStream(Stream inner, long length) : Stream
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
     {
         if (_remaining <= 0) return 0;
-        var n = await inner.ReadAsync(buffer[..(int)Math.Min(buffer.Length, _remaining)], ct);
+        var n = await _inner.ReadAsync(buffer[..(int)Math.Min(buffer.Length, _remaining)], ct);
         _remaining -= n;
         return n;
     }

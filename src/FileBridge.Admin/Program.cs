@@ -14,8 +14,9 @@ using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var logFactory = LogManager.LoadConfiguration("nlog.config");
-logFactory.Configuration.Variables["connectionString"] = builder.Configuration.GetConnectionString("FileBridge") ?? "";
+var logConfig = LogManager.Setup().LoadConfigurationFromFile("nlog.config").LogFactory;
+if (logConfig.Configuration != null)
+    logConfig.Configuration.Variables["connectionString"] = builder.Configuration.GetConnectionString("FileBridge") ?? "";
 GlobalDiagnosticsContext.Set("NodeRole", "Admin");
 builder.Logging.ClearProviders();
 builder.Host.UseNLog();

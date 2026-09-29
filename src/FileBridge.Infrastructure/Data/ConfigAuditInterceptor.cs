@@ -49,8 +49,8 @@ public sealed class ConfigAuditInterceptor(ICurrentUser user) : SaveChangesInter
                     EntityState.Deleted => AuditAction.Deleted,
                     _ => AuditAction.Modified
                 },
-                BeforeJson = entry.State == EntityState.Added ? null : Serialize(entry.OriginalValues),
-                AfterJson = entry.State == EntityState.Deleted ? null : Serialize(entry.CurrentValues),
+                BeforeJson = entry.State == EntityState.Added ? null : Serialize(entry, entry.OriginalValues),
+                AfterJson = entry.State == EntityState.Deleted ? null : Serialize(entry, entry.CurrentValues),
                 ChangedBy = user.Name,
                 ChangedUtc = now,
                 Host = Environment.MachineName
@@ -62,22 +62,30 @@ public sealed class ConfigAuditInterceptor(ICurrentUser user) : SaveChangesInter
     {
         var key = entry.Metadata.FindPrimaryKey();
         if (key is null) return "";
-        var values = key.Properties.Select(p => entry.Property(p.Name));
-        return entry.State == EntityState.Added && values.Any(v => v.IsTemporary)
-            ? "(new)"
-            : string.Join("|", values.Select(v => v.CurrentValue));
+        var values = key.Properties.Select(p => entry.Property(p.Name)).ToList();
+        if (entry.State == EntityState.Added && values.Any(v => v.IsTemporary))
+        {
+            var nameProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name is "Name" or "Key" or "SettingKey" or "AdGroup");
+            return nameProp?.CurrentValue is string name && !string.IsNullOrWhiteSpace(name)
+                ? $"(new: {name})"
+                : "(new)";
+        }
+        return string.Join("|", values.Select(v => v.CurrentValue));
     }
 
-    private static string Serialize(PropertyValues values)
+    private static string Serialize(EntityEntry entry, PropertyValues values)
     {
+        var isSecretSetting = entry.Entity is GlobalSetting { IsSecret: true };
         var dict = new Dictionary<string, object?>();
         foreach (var p in values.Properties)
         {
             if (p.Name == nameof(AuditableEntity.RowVersion)) continue;
             var v = values[p];
-            dict[p.Name] = p.Name.StartsWith("Protected", StringComparison.Ordinal) || p.Name == nameof(NotificationRule.Target) && v is string s && s.StartsWith("CfDJ8")
-                ? (v is null ? null : "***")
-                : v;
+            var isSecret = p.Name.StartsWith("Protected", StringComparison.Ordinal)
+                || (isSecretSetting && p.Name == nameof(GlobalSetting.SettingValue))
+                || (p.Name == nameof(NotificationRule.Target) && v is string s && s.StartsWith("CfDJ8"))
+                || (v is string str && str.StartsWith("CfDJ8"));
+            dict[p.Name] = isSecret ? (v is null ? null : "***") : v;
         }
         return JsonSerializer.Serialize(dict);
     }

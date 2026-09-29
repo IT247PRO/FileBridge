@@ -37,7 +37,7 @@ public sealed class HistoryController(FileBridgeDbContext db) : Controller
         if (h is null) return NotFound();
         // Fingerprint includes mtime ticks, which this row doesn't retain, so clear by (JobId, SourcePath) instead.
         await db.Database.ExecuteSqlInterpolatedAsync($@"
-UPDATE dbo.tblFileLease SET CompletedUtc = NULL, LeaseExpiresUtc = SYSUTCDATETIME()
+UPDATE dbo.tblFileLease SET CompletedUtc = NULL, LeaseExpiresUtc = SYSUTCDATETIME(), AttemptCount = 0
 WHERE JobId = {h.JobId} AND SourcePath = {h.SourcePath}");
         TempData["Message"] = "File will be re-attempted on the next run (lease cleared).";
         return RedirectToAction(nameof(Details), new { id });

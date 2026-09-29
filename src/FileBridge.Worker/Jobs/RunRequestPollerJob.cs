@@ -14,6 +14,7 @@ namespace FileBridge.Worker.Jobs;
 /// GET /api/v1/requests/{id}. This job claims queued requests (any Worker node, first to update wins because
 /// of the WHERE RequestStatusId = Queued guard) and executes them.
 /// </summary>
+[DisallowConcurrentExecution]
 public sealed class RunRequestPollerJob(FileBridgeDbContext db, TransferPipeline pipeline, ProcessLaunchService launcher, IEndpointFactory endpoints, ISchedulerFactory schedulerFactory) : IJob
 {
     public async Task Execute(IJobExecutionContext context)
@@ -24,19 +25,26 @@ public sealed class RunRequestPollerJob(FileBridgeDbContext db, TransferPipeline
         // TargetNode is only ever set on KillProcess requests, so this extra condition is a no-op for every
         // other request type: it just makes a kill wait for the node that actually owns the running process
         // (Process.Kill(pid) only works on the machine that owns that PID).
-        var claimed = await db.RunRequests
+        var candidateIds = await db.RunRequests
             .Where(r => r.RequestStatusId == RequestStatus.Queued && (r.TargetNode == null || r.TargetNode == node))
             .OrderBy(r => r.Id)
             .Take(10)
+            .Select(r => r.Id)
+            .ToListAsync(ct);
+        if (candidateIds.Count == 0) return;
+
+        var now = DateTime.UtcNow;
+        var claimed = await db.RunRequests
+            .Where(r => candidateIds.Contains(r.Id) && r.RequestStatusId == RequestStatus.Queued)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(r => r.RequestStatusId, RequestStatus.Running)
                 .SetProperty(r => r.PickedBy, node)
-                .SetProperty(r => r.StartedUtc, DateTime.UtcNow), ct);
+                .SetProperty(r => r.StartedUtc, now), ct);
         if (claimed == 0) return;
 
         var requests = await db.RunRequests
-            .Where(r => r.RequestStatusId == RequestStatus.Running && r.PickedBy == node && r.CompletedUtc == null)
-            .OrderBy(r => r.Id).Take(10).ToListAsync(ct);
+            .Where(r => candidateIds.Contains(r.Id) && r.RequestStatusId == RequestStatus.Running && r.PickedBy == node && r.CompletedUtc == null)
+            .OrderBy(r => r.Id).ToListAsync(ct);
 
         foreach (var req in requests)
         {

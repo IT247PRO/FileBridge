@@ -14,8 +14,9 @@ builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnC
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
     .AddEnvironmentVariables();
 
-var logFactory = LogManager.LoadConfiguration("nlog.config");
-logFactory.Configuration.Variables["connectionString"] = builder.Configuration.GetConnectionString("FileBridge") ?? "";
+var logConfig = LogManager.Setup().LoadConfigurationFromFile("nlog.config").LogFactory;
+if (logConfig.Configuration != null)
+    logConfig.Configuration.Variables["connectionString"] = builder.Configuration.GetConnectionString("FileBridge") ?? "";
 GlobalDiagnosticsContext.Set("NodeRole", "Worker");
 builder.Logging.ClearProviders();
 builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);

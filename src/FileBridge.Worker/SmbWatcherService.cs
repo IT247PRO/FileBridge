@@ -84,9 +84,18 @@ public sealed class SmbWatcherService(IServiceScopeFactory scopes, ISchedulerFac
         {
             await Task.Delay(Debounce);
             var scheduler = await schedulerFactory.GetScheduler();
-            var data = new JobDataMap { ["jobId"] = jobId.ToString(), ["triggeredBy"] = "watcher", ["manual"] = "false" };
-            if (await scheduler.CheckExists(new JobKey($"transfer-{jobId}", "transfer")))
-                await scheduler.TriggerJob(new JobKey($"transfer-{jobId}", "transfer"), data);
+            var jobKey = new JobKey($"transfer-{jobId}", "transfer");
+            if (await scheduler.CheckExists(jobKey))
+            {
+                var executing = await scheduler.GetCurrentlyExecutingJobs();
+                if (executing.Any(e => e.JobDetail.Key.Equals(jobKey)))
+                {
+                    log.LogDebug("Job {JobId} is already executing; skipping duplicate watcher trigger", jobId);
+                    return;
+                }
+                var data = new JobDataMap { ["jobId"] = jobId.ToString(), ["triggeredBy"] = "watcher", ["manual"] = "false" };
+                await scheduler.TriggerJob(jobKey, data);
+            }
         }
         catch (Exception ex) { log.LogWarning(ex, "Watcher-triggered run failed for job {JobId}", jobId); }
     }

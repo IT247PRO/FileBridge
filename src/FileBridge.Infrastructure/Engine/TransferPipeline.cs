@@ -259,9 +259,10 @@ public sealed class TransferPipeline(
             history.DurationMs = (long)(history.CompletedUtc.Value - history.StartedUtc).TotalMilliseconds;
             await db.SaveChangesAsync(CancellationToken.None);
 
-            await (finalStatus == TransferStatus.Succeeded
-                ? Leases.CompleteAsync(db, lease.Value, finalStatus, CancellationToken.None)
-                : Leases.FailAsync(db, lease.Value, TimeSpan.FromMinutes(_opt.FailedCooldownMinutes), CancellationToken.None));
+            if (finalStatus is TransferStatus.Succeeded or TransferStatus.Quarantined)
+                await Leases.CompleteAsync(db, lease.Value, finalStatus, CancellationToken.None);
+            else
+                await Leases.FailAsync(db, lease.Value, TimeSpan.FromMinutes(_opt.FailedCooldownMinutes), CancellationToken.None);
 
             if (finalStatus == TransferStatus.Quarantined)
                 await notifier.NotifyAsync(NotificationEvent.FileQuarantined, job.Id,
@@ -531,8 +532,9 @@ public sealed class TransferPipeline(
         await db.SaveChangesAsync(ct);
     }
 
-    public static void CleanupStaging(Guid runId)
+    public void CleanupStaging(Guid runId)
     {
-        // Per-file staging is removed as each file completes; this removes the (normally empty) run folder.
+        var runDir = Path.Combine(_opt.StagingRoot, runId.ToString("N"));
+        try { if (Directory.Exists(runDir)) Directory.Delete(runDir, true); } catch { /* best effort */ }
     }
 }

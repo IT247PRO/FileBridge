@@ -24,7 +24,7 @@ public sealed class ApiController(FileBridgeDbContext db, RequestService request
     {
         var r = await requests.GetAsync(id);
         if (r is null) return NotFound();
-        return Ok(new { r.Id, Status = r.RequestStatusId.ToString(), r.ResultJson, r.CompletedUtc });
+        return Ok(new { r.Id, Status = r.RequestStatusId.ToString(), r.PickedBy, r.ResultJson, Result = r.ResultJson, r.CompletedUtc });
     }
 
     [HttpGet("jobs")]

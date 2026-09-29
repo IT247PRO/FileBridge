@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace FileBridge.Admin.Controllers;
 
 [Authorize(Policy = Security.Policies.Administer)]
-public sealed class SettingsController(FileBridgeDbContext db) : Controller
+public sealed class SettingsController(FileBridgeDbContext db, ISecretProtector secrets) : Controller
 {
     public async Task<IActionResult> Index()
     {
@@ -24,7 +24,15 @@ public sealed class SettingsController(FileBridgeDbContext db) : Controller
     {
         var setting = await db.GlobalSettings.FindAsync(key);
         if (setting is null) return NotFound();
-        setting.SettingValue = value;
+        if (setting.IsSecret)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+                setting.SettingValue = secrets.Protect(value);
+        }
+        else
+        {
+            setting.SettingValue = value;
+        }
         await db.SaveChangesAsync();
         TempData["Message"] = $"'{key}' updated.";
         return RedirectToAction(nameof(Index));

@@ -38,7 +38,8 @@
             if (!r.ok) throw new Error('Could not read request status (' + r.status + ').');
             const j = await r.json();
             if (j.status === 'Completed' || j.status === 'Failed') {
-                const result = j.result ? JSON.parse(j.result) : {};
+                const raw = j.resultJson || j.result;
+                const result = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : {};
                 if (j.status === 'Failed') throw new Error(result.error || 'The request failed.');
                 return result;
             }

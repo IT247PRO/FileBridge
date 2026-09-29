@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace FileBridge.Admin.Controllers;
 
 [Authorize(Policy = Security.Policies.Approve)]
-public sealed class ApprovalsController(FileBridgeDbContext db, JobService jobs) : Controller
+public sealed class ApprovalsController(FileBridgeDbContext db, JobService jobs, ProcessJobService processJobs) : Controller
 {
     public async Task<IActionResult> Index() =>
         View(await db.ChangeRequests.AsNoTracking().Where(c => c.ApprovalStatusId == ApprovalStatus.Pending)
@@ -27,6 +27,11 @@ public sealed class ApprovalsController(FileBridgeDbContext db, JobService jobs)
             var current = await jobs.GetForEditAsync(jobId);
             if (current is not null) ViewBag.Current = JsonSerializer.Serialize(current, pretty);
         }
+        else if (cr.EntityName == "ProcessJob" && cr.EntityKey is not null && int.TryParse(cr.EntityKey, out var processJobId))
+        {
+            var current = await processJobs.GetForEditAsync(processJobId);
+            if (current is not null) ViewBag.Current = JsonSerializer.Serialize(current, pretty);
+        }
         try
         {
             // Reformat for readability only; the stored payload itself is left untouched (this instance is AsNoTracking).
@@ -41,13 +46,17 @@ public sealed class ApprovalsController(FileBridgeDbContext db, JobService jobs)
     public async Task<IActionResult> Approve(long id)
     {
         var cr = await db.ChangeRequests.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
-        if (cr is not null && cr.RequestedBy == User.Identity!.Name)
+        if (cr is not null && cr.RequestedBy.Equals(User.Identity?.Name ?? "", StringComparison.OrdinalIgnoreCase))
         {
             TempData["Message"] = "You cannot approve your own change request.";
             TempData["MessageType"] = "warning";
             return RedirectToAction(nameof(Index));
         }
-        await jobs.ApproveAsync(id);
+        if (cr?.EntityName == "ProcessJob")
+            await processJobs.ApproveAsync(id);
+        else
+            await jobs.ApproveAsync(id);
+
         TempData["Message"] = "Change approved and applied.";
         return RedirectToAction(nameof(Index));
     }

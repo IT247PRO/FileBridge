@@ -44,10 +44,22 @@ public sealed class EncryptionProfilesController(FileBridgeDbContext db, ISecret
         if (!string.IsNullOrWhiteSpace(m.Passphrase)) p.ProtectedPassphrase = secrets.Protect(m.Passphrase);
 
         string? generated = null;
-        if (m.EncryptionOperationId is EncryptionOperation.AesEncrypt or EncryptionOperation.AesDecrypt && string.IsNullOrEmpty(p.ProtectedAesKey))
+        if (!string.IsNullOrWhiteSpace(m.AesKey))
         {
-            generated = CryptoService.GenerateAesKey();
-            p.ProtectedAesKey = secrets.Protect(generated);
+            p.ProtectedAesKey = secrets.Protect(m.AesKey.Trim());
+        }
+        else if (string.IsNullOrEmpty(p.ProtectedAesKey))
+        {
+            if (m.EncryptionOperationId == EncryptionOperation.AesEncrypt)
+            {
+                generated = CryptoService.GenerateAesKey();
+                p.ProtectedAesKey = secrets.Protect(generated);
+            }
+            else if (m.EncryptionOperationId == EncryptionOperation.AesDecrypt)
+            {
+                ModelState.AddModelError(nameof(m.AesKey), "An AES key is required for AES decryption.");
+                return View("Edit", m);
+            }
         }
 
         if (p.Id == 0) db.EncryptionProfiles.Add(p);

@@ -9,6 +9,7 @@ namespace FileBridge.Worker.Jobs;
 /// Reconciles tblProcessJob against Quartz's own store every 30s, exactly like ScheduleSyncJob does for
 /// tblJob/TransferQuartzJob, just against the "process" group and ProcessLaunchQuartzJob.
 /// </summary>
+[DisallowConcurrentExecution]
 public sealed class ProcessScheduleSyncJob(FileBridgeDbContext db, ISchedulerFactory schedulerFactory, ILogger<ProcessScheduleSyncJob> log) : IJob
 {
     private const string Group = "process";

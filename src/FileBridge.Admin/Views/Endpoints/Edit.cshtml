@@ -32,6 +32,10 @@
     </fieldset>
 
     <fieldset data-show-if="EndpointTypeId=Smb,Sftp,Https"><legend>Credential @(Model.HasStoredCredential ? "(a credential is stored; leave fields blank to keep it)" : "")</legend>
+        @if (Model.HasStoredCredential)
+        {
+            <div class="checkline mb-3"><input asp-for="RemoveCredential" type="checkbox" /><label asp-for="RemoveCredential">Remove stored credential (revert to default gMSA identity)</label></div>
+        }
         <div class="row">
             <div data-show-if="EndpointTypeId=Smb"><label>Domain</label><input asp-for="Domain" /></div>
             <div><label>Username</label><input asp-for="Username" /></div>

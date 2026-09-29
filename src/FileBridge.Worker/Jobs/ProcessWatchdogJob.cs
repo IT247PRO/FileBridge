@@ -14,6 +14,7 @@ namespace FileBridge.Worker.Jobs;
 /// that: it only looks at rows this node itself spawned, and marks any whose PID/start-time no longer
 /// resolves as Lost rather than guessing an outcome.
 /// </summary>
+[DisallowConcurrentExecution]
 public sealed class ProcessWatchdogJob(FileBridgeDbContext db, ILogger<ProcessWatchdogJob> log) : IJob
 {
     public async Task Execute(IJobExecutionContext context)
@@ -24,7 +25,6 @@ public sealed class ProcessWatchdogJob(FileBridgeDbContext db, ILogger<ProcessWa
         var stuck = await db.ProcessRunHistories
             .Where(h => h.NodeName == node && h.StatusId == ProcessRunStatus.Running && h.CompletedUtc == null)
             .ToListAsync(ct);
-        if (stuck.Count == 0) return;
 
         foreach (var history in stuck)
         {
@@ -43,6 +43,29 @@ public sealed class ProcessWatchdogJob(FileBridgeDbContext db, ILogger<ProcessWa
                     history.RunId, history.ProcessJobId, pid);
             }
         }
+
+        // Reconcile foreign nodes that have died/crashed without recovering their processes
+        var tenMinutesAgo = DateTime.UtcNow.AddMinutes(-10);
+        var activeNodes = (await db.NodeHeartbeats.AsNoTracking()
+            .Where(n => n.NodeRole == "Worker" && n.LastSeenUtc >= tenMinutesAgo)
+            .Select(n => n.NodeName).ToListAsync(ct))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var foreignDead = await db.ProcessRunHistories
+            .Where(h => h.NodeName != node && h.StatusId == ProcessRunStatus.Running && h.CompletedUtc == null && h.StartedUtc < tenMinutesAgo)
+            .ToListAsync(ct);
+
+        foreach (var history in foreignDead)
+        {
+            if (!activeNodes.Contains(history.NodeName))
+            {
+                history.StatusId = ProcessRunStatus.Lost;
+                history.ErrorMessage = $"Worker node '{history.NodeName}' appears to be offline (no heartbeat in >10m); outcome is unknown.";
+                history.CompletedUtc = DateTime.UtcNow;
+                log.LogWarning("Process run {RunId} marked Lost: owner node {OwnerNode} is offline", history.RunId, history.NodeName);
+            }
+        }
+
         await db.SaveChangesAsync(ct);
     }
 }

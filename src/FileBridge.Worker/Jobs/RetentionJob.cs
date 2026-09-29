@@ -3,6 +3,7 @@ using Quartz;
 
 namespace FileBridge.Worker.Jobs;
 
+[DisallowConcurrentExecution]
 public sealed class RetentionJob(RetentionService retention) : IJob
 {
     public Task Execute(IJobExecutionContext context) => retention.RunAsync(context.CancellationToken);

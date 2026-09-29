@@ -10,8 +10,9 @@
         <div><label>Operation</label><select asp-for="EncryptionOperationId" asp-items="Html.GetEnumSelectList<EncryptionOperation>()"></select></div>
     </div>
     <p class="fb-empty pad-tight">
-        @(Model.HasStoredKeys ? "Keys are already stored for this profile; leave fields blank to keep them." : "For AES, leave the key field blank and a key will be generated on save.")
+        @(Model.HasStoredKeys ? "Keys are already stored for this profile; leave fields blank to keep them." : "For AES encrypt, leave the key field blank and a 64-byte key will be generated on save. For AES decrypt, enter the base64 key.")
     </p>
+    <div><label>AES key (base64 64-byte key for AES operations)</label><input asp-for="AesKey" class="fb-mono" placeholder="Base64-encoded 64-byte key" /></div>
     <div><label>PGP public key (armored)</label><textarea asp-for="PublicKey" rows="4" class="fb-mono"></textarea></div>
     <div><label>PGP private key (armored)</label><textarea asp-for="PrivateKey" rows="4" class="fb-mono"></textarea></div>
     <div><label>Passphrase</label><input asp-for="Passphrase" type="password" autocomplete="new-password" /></div>

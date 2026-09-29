@@ -9,6 +9,7 @@ namespace FileBridge.Worker.Jobs;
 /// Reconciles tblJob against Quartz's own store every 30s: schedules new/changed jobs, removes deleted/disabled
 /// ones. The trigger's "version" data value is compared to tblJob.Version so an edit reschedules automatically.
 /// </summary>
+[DisallowConcurrentExecution]
 public sealed class ScheduleSyncJob(FileBridgeDbContext db, ISchedulerFactory schedulerFactory, ILogger<ScheduleSyncJob> log) : IJob
 {
     private const string Group = "transfer";

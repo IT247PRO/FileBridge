@@ -129,6 +129,7 @@ public sealed class EndpointEditModel
     public string? PrivateKey { get; set; }
     public string? Passphrase { get; set; }
     public bool HasStoredCredential { get; set; }
+    public bool RemoveCredential { get; set; }
     public byte[]? RowVersion { get; set; }
 }
 
@@ -143,6 +144,7 @@ public sealed class EncryptionProfileEditModel
     public string? OutputExtension { get; set; }
     public bool StripExtensionOnDecrypt { get; set; } = true;
     public bool ArmorOutput { get; set; }
+    public string? AesKey { get; set; }
     /// <summary>Set by Save when an AES key was freshly generated; shown once via TempData, never stored in ViewModel state.</summary>
     public string? GeneratedAesKey { get; set; }
     public bool HasStoredKeys { get; set; }

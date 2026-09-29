@@ -68,9 +68,9 @@ public sealed class ProcessJobsController(FileBridgeDbContext db, ProcessJobServ
         foreach (var e in errors) ModelState.AddModelError("", e);
         if (!ModelState.IsValid) return View("Edit", model);
 
-        await jobs.ApplyAsync(model);
-        TempData["Message"] = "Batch process job saved.";
-        TempData["MessageType"] = "success";
+        var (applied, message) = await jobs.SubmitAsync(model);
+        TempData["Message"] = message;
+        TempData["MessageType"] = applied ? "success" : "info";
         return RedirectToAction(nameof(Index));
     }
 

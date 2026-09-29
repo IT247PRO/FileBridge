@@ -46,16 +46,29 @@ public sealed class EndpointsController(FileBridgeDbContext db, ISecretProtector
         e.UploadRoute = m.UploadRoute; e.DeleteRoute = m.DeleteRoute; e.RenameRoute = m.RenameRoute; e.TimeoutSeconds = m.TimeoutSeconds;
         e.IsEnabled = m.IsEnabled; e.Notes = m.Notes;
 
-        var wantsCredential = !string.IsNullOrWhiteSpace(m.Username) || !string.IsNullOrWhiteSpace(m.Password) || !string.IsNullOrWhiteSpace(m.PrivateKey);
-        if (wantsCredential)
+        if (m.RemoveCredential)
         {
-            e.Credential ??= new Credential { Name = m.Name + " credential" };
-            e.Credential.Name = m.Name + " credential";
-            e.Credential.Domain = m.Domain;
-            if (!string.IsNullOrWhiteSpace(m.Username)) e.Credential.Username = m.Username;
-            if (!string.IsNullOrWhiteSpace(m.Password)) e.Credential.ProtectedPassword = secrets.Protect(m.Password);
-            if (!string.IsNullOrWhiteSpace(m.PrivateKey)) e.Credential.ProtectedPrivateKey = secrets.Protect(m.PrivateKey);
-            if (!string.IsNullOrWhiteSpace(m.Passphrase)) e.Credential.ProtectedPassphrase = secrets.Protect(m.Passphrase);
+            if (e.Credential is not null)
+            {
+                var cred = e.Credential;
+                e.Credential = null;
+                e.CredentialId = null;
+                db.Credentials.Remove(cred);
+            }
+        }
+        else
+        {
+            var wantsCredential = !string.IsNullOrWhiteSpace(m.Username) || !string.IsNullOrWhiteSpace(m.Password) || !string.IsNullOrWhiteSpace(m.PrivateKey);
+            if (wantsCredential)
+            {
+                e.Credential ??= new Credential { Name = m.Name + " credential" };
+                e.Credential.Name = m.Name + " credential";
+                e.Credential.Domain = m.Domain;
+                if (!string.IsNullOrWhiteSpace(m.Username)) e.Credential.Username = m.Username;
+                if (!string.IsNullOrWhiteSpace(m.Password)) e.Credential.ProtectedPassword = secrets.Protect(m.Password);
+                if (!string.IsNullOrWhiteSpace(m.PrivateKey)) e.Credential.ProtectedPrivateKey = secrets.Protect(m.PrivateKey);
+                if (!string.IsNullOrWhiteSpace(m.Passphrase)) e.Credential.ProtectedPassphrase = secrets.Protect(m.Passphrase);
+            }
         }
 
         if (e.Id == 0) db.Endpoints.Add(e);
